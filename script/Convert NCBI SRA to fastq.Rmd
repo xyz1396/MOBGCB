@@ -1,0 +1,19 @@
+---
+title: "Convert NCBI SRA to fastq"
+author: "xyz"
+date: "2021/5/18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{bash}
+
+```
+
+```{r}
+
+```
+

@@ -9,8 +9,17 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{bash}
+[fastq-dump tutorail](https://ncbi.github.io/sra-tools/fastq-dump.html)
 
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+# fastq-dump -I -O ../temp ../data/SRR4038961.1
+
+# split all file
+ls ../data/SRR* | \
+  xargs -n 1 -P 1 bash -c \
+  'fastq-dump -I -O ../temp $0'
 ```
 
 ```{r}

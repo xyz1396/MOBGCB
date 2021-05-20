@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{bash}
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate qiime2
-# fastq-dump -I -O ../temp ../data/SRR4038961.1
+# fastq-dump --split-spot --split-files -O ../temp ../data/SRR4038961.1
 
 # split all file
 ls ../data/SRR* | \
@@ -22,7 +22,18 @@ ls ../data/SRR* | \
   'fastq-dump -I -O ../temp $0'
 ```
 
-```{r}
+# https://trace.ncbi.nlm.nih.gov/Traces/sra/?run=SRR3452783
 
+[sra link of this paper](https://trace.ncbi.nlm.nih.gov/Traces/sra/?run=SRR3452783)
+
+Original format split into samples can only be downloaded from Google Cloud or AWS
+
+[SRA downloaded from Google Cloud ](https://edwards.sdsu.edu/research/fastq-dump/)
+
+```{bash}
+SRR3452783
+SRR3452785
+
+fastq-dump --split-spot --split-files -O ../temp ../data/SRR3452783.1
 ```
 

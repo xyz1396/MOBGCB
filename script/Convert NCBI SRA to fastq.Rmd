@@ -22,13 +22,15 @@ ls ../data/SRR* | \
   'fastq-dump -I -O ../temp $0'
 ```
 
-# https://trace.ncbi.nlm.nih.gov/Traces/sra/?run=SRR3452783
+# Differential responses of soil bacterial communities to long-term N and P inputs in a semi-arid steppe
 
 [sra link of this paper](https://trace.ncbi.nlm.nih.gov/Traces/sra/?run=SRR3452783)
 
 Original format split into samples can only be downloaded from Google Cloud or AWS
 
-[SRA downloaded from Google Cloud ](https://edwards.sdsu.edu/research/fastq-dump/)
+[fastq-dump tutorial](https://edwards.sdsu.edu/research/fastq-dump/)
+
+[SRA downloaded from Google Cloud](https://edwards.sdsu.edu/research/accessing-sra-in-the-cloud/)
 
 ```{bash}
 SRR3452783

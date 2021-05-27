@@ -15,15 +15,53 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{bash}
 #!/bin/sh -login
-#PBS -o /home/user/qiimejob
+#PBS -o /home/xiongyi/ammoxidationSIPheavyAOA
 #PBS -j oe
-#PBS -l nodes=1:ppn=1,walltime=999:00:00,mem=30gb
-#PBS -N QIIMEj
-#PBS -q low
+#PBS -l nodes=1:ppn=16,walltime=24:24:00,mem=30gb
+#PBS -N fastp
+#PBS -q cpu
 source ~/miniconda3/etc/profile.d/conda.sh
-conda activate qiime2
-cd ../data
-fastp -i in.R1.fq.gz -I in.R2.fq.gz -o out.R1.fq.gz -O out.R2.fq.gz
+conda activate soil
+cd ~/huangxueru/氨氧化-SIP-重层-AOA标记上/Rawdata
+fastp -i L1HFC080438_CC_S94_L002_R1_001.fastq.gz \
+  -I L1HFC080438_CC_S94_L002_R2_001.fastq.gz \
+  -o ~/ammoxidationSIPheavyAOA/S94.R1.fq.gz \
+  -O ~/ammoxidationSIPheavyAOA/S94.R2.fq.gz \
+  --thread 16\
+  # qualified_quality_phred
+  -q 20 \
+  # unqualified_percent_limit
+  -u 20 \
+  # average_qual
+  -e 30 \
+  -h ~/ammoxidationSIPheavyAOA/S94.html
+wait
+fastp -i L1HFC080439_CM_S95_L002_R1_001.fastq.gz \
+  -I L1HFC080439_CM_S95_L002_R2_001.fastq.gz \
+  -o ~/ammoxidationSIPheavyAOA/S95.R1.fq.gz \
+  -O ~/ammoxidationSIPheavyAOA/S95.R2.fq.gz \
+  --thread 16 \
+  -q 20 \
+  -u 20 \
+  -e 30 \
+  -h ~/ammoxidationSIPheavyAOA/S95.html
+wait
+fastp -i L1HFC080440_CS_S96_L002_R1_001.fastq.gz \
+  -I L1HFC080440_CS_S96_L002_R2_001.fastq.gz \
+  -o ~/ammoxidationSIPheavyAOA/S96.R1.fq.gz \
+  -O ~/ammoxidationSIPheavyAOA/S96.R2.fq.gz \
+  --thread 16 \
+  -q 20 \
+  -u 20 \
+  -e 30 \
+  -h ~/ammoxidationSIPheavyAOA/S96.html
+
+vim fastpJob.sh 
+qsub fastpJob.sh
+# get job status
+qstat -f 699077
+# kill job
+qdel 699077
 ```
 
 [megahit](https://github.com/voutcn/megahit)

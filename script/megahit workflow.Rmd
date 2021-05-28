@@ -13,6 +13,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 [fastp](https://github.com/OpenGene/fastp)
 
+qualified_quality_phred
+  -q 20 
+unqualified_percent_limit
+  -u 20 
+average_quality
+  -e 30 
+
 ```{bash}
 #!/bin/sh -login
 #PBS -o /home/xiongyi/ammoxidationSIPheavyAOA
@@ -28,11 +35,8 @@ fastp -i L1HFC080438_CC_S94_L002_R1_001.fastq.gz \
   -o ~/ammoxidationSIPheavyAOA/S94.R1.fq.gz \
   -O ~/ammoxidationSIPheavyAOA/S94.R2.fq.gz \
   --thread 16\
-  # qualified_quality_phred
   -q 20 \
-  # unqualified_percent_limit
   -u 20 \
-  # average_qual
   -e 30 \
   -h ~/ammoxidationSIPheavyAOA/S94.html
 wait
@@ -64,9 +68,74 @@ qstat -f 699077
 qdel 699077
 ```
 
+# assemble by megahit
+
 [megahit](https://github.com/voutcn/megahit)
 
-```{bash}
+meta '--min-count 2 --k-list 21,41,61,81,99' 
+(generic metagenomes, default)
 
+meta-sensitive '--min-count 2 --k-list 21,31,41,51,61,71,81,91,99' 
+(more sensitive but slower)
+
+meta-large '--min-count 2 --k-list 27,37,47,57,67,77,87' 
+(large & complex metagenomes, like soil)
+
+bulk '--min-count 3 --k-list 31,51,71,91,99 --no-mercy'  
+(experimental, standard bulk sequencing with >= 30x depth)
+
+single-cell '--min-count 3 --k-list 21,33,55,77,99,121 --merge_level 20,0.96' 
+(experimental, single cell data)
+
+138109 contigs, total 100213737 bp, min 200 bp, 
+max 277744 bp, avg 725 bp, N50 1326 bp
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/ammoxidationSIPheavyAOA
+#PBS -j oe
+#PBS -l nodes=1:ppn=22,walltime=999:00:00,mem=120gb
+#PBS -N megahit
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate soil
+cd ~/ammoxidationSIPheavyAOA/
+megahit -1 S94.R1.fq.gz,S95.R1.fq.gz,S96.R1.fq.gz \
+  -2 S94.R2.fq.gz,S95.R2.fq.gz,S96.R2.fq.gz \
+  -o megahitOut \
+  --min-count 2 \
+  --k-list 27,37,47,57,67,77,87 \
+  -t 22
+  
+vim megahitJob.sh 
+qsub megahitJob.sh
+# get job status
+qstat -f 699088
+# kill job
+qdel 699088
+# see the work load
+pestat
+```
+
+# binning by metaWRAP
+
+[metaWRAP](https://github.com/bxlab/metaWRAP)
+
+```{bash install}
+conda create -y -n metawrap-env python=2.7
+conda activate metawrap-env
+conda config --add channels defaults
+conda config --add channels conda-forge
+conda config --add channels bioconda
+conda config --add channels ursky
+conda install --only-deps -c ursky metawrap-mg
+conda install -c ursky metawrap-mg
+conda install -c bioconda kraken2
+# fix dustmasker: error while loading shared libraries
+conda install -c bioconda blast openssl=1.0
+
+mkdir /home/xiongyi/database/KRAKEN_DB
+cd /home/xiongyi/database/KRAKEN_DB
+kraken2-build --standard --threads 12 --db MY_KRAKEN2_DB
 ```
 

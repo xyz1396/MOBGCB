@@ -121,6 +121,10 @@ pestat
 
 [metaWRAP](https://github.com/bxlab/metaWRAP)
 
+[metaWRAP Chinese tutorial](https://mp.weixin.qq.com/s/Ecn4DOrhfUhz1HynbgQtnw)
+
+[invalid compressed data--format violated](https://github.com/DerrickWood/kraken2/issues/412)
+
 ```{bash install}
 conda create -y -n metawrap-env python=2.7
 conda activate metawrap-env
@@ -137,5 +141,32 @@ conda install -c bioconda blast openssl=1.0
 mkdir /home/xiongyi/database/KRAKEN_DB
 cd /home/xiongyi/database/KRAKEN_DB
 kraken2-build --standard --threads 12 --db MY_KRAKEN2_DB
+
+# fix problem of abortive download
+# only download plasmid db and build again
+# try 3 times, cannot work
+kraken2-build --download-library plasmid --db MY_KRAKEN2_DB --use-ftp
+
+kraken2-build --download-library fungi --db MY_KRAKEN2_DB
+
+#!/bin/sh -login
+#PBS -o /home/xiongyi/database/KRAKEN_DB
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N kraken2-build
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap-env
+cd /home/xiongyi/database/KRAKEN_DB
+kraken2-build --build --db MY_KRAKEN2_DB --threads 40
+  
+vim kraken2-build.sh 
+qsub kraken2-build.sh
+# get job status
+qstat -f 699112
+# kill job
+qdel 699112
+# see the work load
+pestat
 ```
 

@@ -121,9 +121,69 @@ pestat
 
 [metaWRAP](https://github.com/bxlab/metaWRAP)
 
+[kraken2 Manual](https://github.com/DerrickWood/kraken2/wiki/Manual)
+
 [metaWRAP Chinese tutorial](https://mp.weixin.qq.com/s/Ecn4DOrhfUhz1HynbgQtnw)
 
 [invalid compressed data--format violated](https://github.com/DerrickWood/kraken2/issues/412)
+
+```{bash}
+# checkM database
+mkdir CHECKM_DB
+cd CHECKM_DB
+wget https://data.ace.uq.edu.au/public/CheckM_databases/checkm_data_2015_01_16.tar.gz
+tar -xvf *.tar.gz
+rm *.gz
+cd ..
+checkm data setRoot CHECKM_DB
+
+# unzip fastaq
+cd /home/xiongyi/ammoxidationSIPheavyAOA/
+
+#!/bin/sh -login
+#PBS -o /home/xiongyi/ammoxidationSIPheavyAOA/cleanFastaq/
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N unzip-fastaq
+#PBS -q cpu 
+cd /home/xiongyi/ammoxidationSIPheavyAOA/
+gunzip -c S94.R1.fq.gz >cleanFastaq/S94_1.fastq &
+gunzip -c S94.R2.fq.gz >cleanFastaq/S94_2.fastq &
+gunzip -c S95.R1.fq.gz >cleanFastaq/S95_1.fastq &
+gunzip -c S95.R2.fq.gz >cleanFastaq/S95_2.fastq &
+gunzip -c S96.R1.fq.gz >cleanFastaq/S96_1.fastq &
+gunzip -c S96.R2.fq.gz >cleanFastaq/S96_2.fastq
+
+vim unzip-fastaq.sh
+qsub unzip-fastaq.sh
+
+qstat -f 699118
+
+#!/bin/sh -login
+#PBS -o /home/xiongyi/ammoxidationSIPheavyAOA/
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N metawrap-binning
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap-env
+cd /home/xiongyi/ammoxidationSIPheavyAOA/
+metawrap binning -o INITIAL_BINNING -t 24 \
+  -a megahitOut/final.contigs.fa \
+  --metabat2 --maxbin2 \
+  --concoct cleanFastaq/*.fastq
+  
+vim metawrap-binning.sh 
+qsub metawrap-binning.sh
+# get job status
+qstat -f 699112
+# kill job
+qdel 699112
+# see the work load
+pestat
+```
+
+# kraken2
 
 ```{bash install}
 conda create -y -n metawrap-env python=2.7
@@ -158,7 +218,7 @@ kraken2-build --download-library fungi --db MY_KRAKEN2_DB
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate metawrap-env
 cd /home/xiongyi/database/KRAKEN_DB
-kraken2-build --build --db MY_KRAKEN2_DB --threads 40
+kraken2-build --build --db MY_KRAKEN2_DB --threads 24
   
 vim kraken2-build.sh 
 qsub kraken2-build.sh

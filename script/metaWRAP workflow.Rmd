@@ -277,4 +277,43 @@ qstat -f 699137
 qdel 699137
 ```
 
+# Visualize bins
+
+[install aspera](https://www.jianshu.com/p/240b7d751cf1)
+
+```{bash}
+ftp
+open ftp.ncbi.nlm.nih.gov
+# user
+anonymous
+cd /blast/db/
+passive
+mls nt.*.tar.gz download.list
+bye
+
+nohup cat NCBI.nt.download.list.txt | \
+  xargs -n 1 -P 1 \
+  bash -c '~/.aspera/connect/bin/ascp -v -k 1 -T -l 1000m -i ~/asperaweb_id_dsa.openssh anonftp@ftp.ncbi.nlm.nih.gov:/blast/db/$0 ./' \
+  > downloadlog.txt 2>&1 &
+
+#!/bin/sh -login
+#PBS -o /home/xiongyi/ammoxidationSIPheavyAOA/BLOBOLOGY
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N BLOBOLOGY
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap-env
+cd /home/xiongyi/ammoxidationSIPheavyAOA/
+metawrap blobology -a megahitOut/final.contigs.fa \
+  -t 24 \
+  -o BLOBOLOGY \
+  --bins BIN_REFINEMENT/metawrap_50_10_bins \
+  cleanFastaq/*fastq
+
+vim blobology.sh 
+qsub blobology.sh
+qstat -f 699137
+qdel 699137
+```
 

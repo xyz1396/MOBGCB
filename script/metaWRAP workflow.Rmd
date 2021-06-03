@@ -288,13 +288,25 @@ open ftp.ncbi.nlm.nih.gov
 anonymous
 cd /blast/db/
 passive
-mls nt.*.tar.gz download.list
+mls nt.*.tar.gz download.list.txt
+cd /blast/db/v4/
+mls nt_v4.*.tar.gz downloadV4.list.txt
 bye
 
 nohup cat NCBI.nt.download.list.txt | \
   xargs -n 1 -P 1 \
   bash -c '~/.aspera/connect/bin/ascp -v -k 1 -T -l 1000m -i ~/asperaweb_id_dsa.openssh anonftp@ftp.ncbi.nlm.nih.gov:/blast/db/$0 ./' \
-  > downloadlog.txt 2>&1 &
+  >> downloadlog.txt 2>&1 &
+  
+nohup cat downloadV4.list.txt | \
+  xargs -n 1 -P 1 \
+  bash -c '~/.aspera/connect/bin/ascp -v -k 1 -T -l 1000m -i ~/asperaweb_id_dsa.openssh anonftp@ftp.ncbi.nlm.nih.gov:/blast/db/v4/$0 ./' \
+  >> downloadlog.txt 2>&1 &
+  
+~/.aspera/connect/bin/ascp -v -k 1 -T -l 1000m \
+  -i ~/asperaweb_id_dsa.openssh \
+  anonftp@ftp.ncbi.nlm.nih.gov:/pub/taxonomy/taxdump.tar.gz ./
+tar -xvf taxdump.tar.gz
 
 #!/bin/sh -login
 #PBS -o /home/xiongyi/ammoxidationSIPheavyAOA/BLOBOLOGY

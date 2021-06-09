@@ -149,13 +149,11 @@ cd /home/xiongyi/ammoxidationSIPheavyAOA/
 #PBS -N unzip-fastaq
 #PBS -q cpu 
 cd /home/xiongyi/ammoxidationSIPheavyAOA/
-gunzip -c S94.R1.fq.gz >cleanFastaq/S94_1.fastq &
+gunzip -c S94.R1.fq.gz >cleanFastaq/S94_1.fastq
 gunzip -c S94.R2.fq.gz >cleanFastaq/S94_2.fastq 
-
-gunzip -c S95.R1.fq.gz >cleanFastaq/S95_1.fastq &
+gunzip -c S95.R1.fq.gz >cleanFastaq/S95_1.fastq
 gunzip -c S95.R2.fq.gz >cleanFastaq/S95_2.fastq 
-
-gunzip -c S96.R1.fq.gz >cleanFastaq/S96_1.fastq &
+gunzip -c S96.R1.fq.gz >cleanFastaq/S96_1.fastq
 gunzip -c S96.R2.fq.gz >cleanFastaq/S96_2.fastq
 
 vim unzip-fastaq.sh
@@ -269,6 +267,7 @@ metawrap bin_refinement -o BIN_REFINEMENT \
   -t 24 \
   -A INITIAL_BINNING/metabat2_bins/ \
   -B INITIAL_BINNING/maxbin2_bins/ \
+  -C INITIAL_BINNING/concoct_bins/ \
   -c 50 -x 10
 
 vim bin_refinement.sh 
@@ -302,6 +301,9 @@ nohup cat downloadV4.list.txt | \
   xargs -n 1 -P 1 \
   bash -c '~/.aspera/connect/bin/ascp -v -k 1 -T -l 1000m -i ~/asperaweb_id_dsa.openssh anonftp@ftp.ncbi.nlm.nih.gov:/blast/db/v4/$0 ./' \
   >> downloadlog.txt 2>&1 &
+for a in nt*.tar.gz; do tar xzf $a; done
+
+~/miniconda3/envs/metawrap-env/bin/config-metawrap
   
 ~/.aspera/connect/bin/ascp -v -k 1 -T -l 1000m \
   -i ~/asperaweb_id_dsa.openssh \
@@ -326,6 +328,52 @@ metawrap blobology -a megahitOut/final.contigs.fa \
 vim blobology.sh 
 qsub blobology.sh
 qstat -f 699137
-qdel 699137
+```
+
+# get abundance of bin
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/ammoxidationSIPheavyAOA/QUANT_BINS
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N QUANT_BINS
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap-env
+cd /home/xiongyi/ammoxidationSIPheavyAOA/
+metawrap quant_bins -b BIN_REFINEMENT/metawrap_50_10_bins \
+  -o QUANT_BINS \
+  -t 24 \
+  -a megahitOut/final.contigs.fa cleanFastaq/*fastq
+  
+vim quant_bins.sh 
+```
+
+# Re-assemble bins
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/ammoxidationSIPheavyAOA/BIN_REASSEMBLY
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N BIN_REASSEMBLY
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap-env
+cd /home/xiongyi/ammoxidationSIPheavyAOA/
+cat cleanFastaq/*_1.fastq > cleanFastaq/All1.fastq
+cat cleanFastaq/*_2.fastq > cleanFastaq/All2.fastq
+metawrap reassemble_bins \
+  -1 cleanFastaq/All1.fastq \
+  -2 cleanFastaq/All2.fastq \
+  -t 24 \
+  -m 120 \
+  -c 50 \
+  -x 10 \
+  -o BIN_REASSEMBLY \
+  -b BIN_REFINEMENT/metawrap_50_10_bins
+  
+vim reassemble_bins.sh 
 ```
 

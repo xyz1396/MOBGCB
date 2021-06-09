@@ -1,0 +1,61 @@
+---
+title: "Methane Oxidation"
+author: "xyz"
+date: "2021/6/9"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# unzip data
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/MethaneOxidation/cleanFastaq
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N unzip-fastaq
+#PBS -q cpu 
+cd /home/xiongyi/MethaneOxidation/cleanFastaq
+gunzip -c /home/xiongyi/huangxueru/甲烷氧化/CleanData/S46/S46_350.fq1.gz >S46_1.fastq
+gunzip -c /home/xiongyi/huangxueru/甲烷氧化/CleanData/S46/S46_350.fq2.gz >S46_2.fastq 
+gunzip -c /home/xiongyi/huangxueru/甲烷氧化/CleanData/S50/S50_350.fq1.gz >S50_1.fastq
+gunzip -c /home/xiongyi/huangxueru/甲烷氧化/CleanData/S50/S50_350.fq2.gz >S50_2.fastq 
+gunzip -c /home/xiongyi/huangxueru/甲烷氧化/CleanData/S54/S54_350.fq1.gz >S54_1.fastq
+gunzip -c /home/xiongyi/huangxueru/甲烷氧化/CleanData/S54/S54_350.fq2.gz >S54_2.fastq
+gunzip -c /home/xiongyi/huangxueru/甲烷氧化/CleanData/S67/S67_350.fq1.gz >S67_1.fastq
+gunzip -c /home/xiongyi/huangxueru/甲烷氧化/CleanData/S67/S67_350.fq2.gz >S67_2.fastq
+gunzip -c /home/xiongyi/huangxueru/甲烷氧化/CleanData/S71/S71_350.fq1.gz >S71_1.fastq
+gunzip -c /home/xiongyi/huangxueru/甲烷氧化/CleanData/S71/S71_350.fq2.gz >S71_2.fastq
+gunzip -c /home/xiongyi/huangxueru/甲烷氧化/CleanData/S72/S72_350.fq1.gz >S72_1.fastq
+gunzip -c /home/xiongyi/huangxueru/甲烷氧化/CleanData/S72/S72_350.fq2.gz >S72_2.fastq
+
+vim unzip-fastaq.sh
+qsub unzip-fastaq.sh
+```
+
+# assemble
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/MethaneOxidation/ASSEMBLY
+#PBS -j oe
+#PBS -l nodes=node31:ppn=24,walltime=999:00:00,mem=253gb
+#PBS -N megahit
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate soil
+cd ~/ammoxidationSIPheavyAOA/
+cat cleanFastaq/*_1.fastq > cleanFastaq/All1.fastq
+cat cleanFastaq/*_2.fastq > cleanFastaq/All2.fastq
+metawrap assembly \
+  -1 cleanFastaq/All1.fastq \
+  -2 cleanFastaq/All2.fastq \
+  -m 252 \
+  -t 24 \
+  --use-metaspades \
+  -o ASSEMBLY
+```
+

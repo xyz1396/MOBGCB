@@ -42,20 +42,77 @@ qsub unzip-fastaq.sh
 #!/bin/sh -login
 #PBS -o /home/xiongyi/MethaneOxidation/ASSEMBLY
 #PBS -j oe
-#PBS -l nodes=node31:ppn=24,walltime=999:00:00,mem=253gb
-#PBS -N megahit
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N merge
 #PBS -q cpu
 source ~/miniconda3/etc/profile.d/conda.sh
-conda activate soil
-cd ~/ammoxidationSIPheavyAOA/
+conda activate metawrap-env
+cd /home/xiongyi/MethaneOxidation/
 cat cleanFastaq/*_1.fastq > cleanFastaq/All1.fastq
 cat cleanFastaq/*_2.fastq > cleanFastaq/All2.fastq
+
+vim merge.sh
+
+# use fat node
+
+#!/bin/sh -login
+#PBS -o /home/xiongyi/MethaneOxidation/ASSEMBLY
+#PBS -j oe
+#PBS -l nodes=node31:ppn=24,walltime=999:00:00,mem=250gb
+#PBS -N assembly
+#PBS -q batch
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap-env
+cd /home/xiongyi/MethaneOxidation/
 metawrap assembly \
   -1 cleanFastaq/All1.fastq \
   -2 cleanFastaq/All2.fastq \
-  -m 252 \
+  -m 249 \
   -t 24 \
-  --use-metaspades \
+  --megahit \
   -o ASSEMBLY
+  
+vim assembly.sh
+qsub assembly.sh
+
+#!/bin/sh -login
+#PBS -o /home/xiongyi/MethaneOxidation/ASSEMBLY
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N assembly
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap-env
+cd /home/xiongyi/MethaneOxidation/
+metawrap assembly \
+  -1 cleanFastaq/All1.fastq \
+  -2 cleanFastaq/All2.fastq \
+  -m 120 \
+  -t 24 \
+  --megahit \
+  -o ASSEMBLY
+  
+vim assembly.sh
+qsub assembly.sh
+
+# use megahit
+
+#!/bin/sh -login
+#PBS -o /home/xiongyi/MethaneOxidation/ASSEMBLY
+#PBS -j oe
+#PBS -l nodes=node31:ppn=24,walltime=999:00:00,mem=250gb
+#PBS -N megahit
+#PBS -q batch
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate soil
+cd /home/xiongyi/MethaneOxidation/
+megahit -1 cleanFastaq/All1.fastq \
+  -2 cleanFastaq/All2.fastq \
+  -o ASSEMBLY \
+  --min-count 2 \
+  -m 249 \
+  --k-list 27,37,47,57,67,77,87 \
+  -t 24
+vim megahit.sh
 ```
 

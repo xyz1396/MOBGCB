@@ -377,3 +377,39 @@ metawrap reassemble_bins \
 vim reassemble_bins.sh 
 ```
 
+# species annotation of bins
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/ammoxidationSIPheavyAOA/BIN_CLASSIFICATION
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N BIN_CLASSIFICATION
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap-env
+cd /home/xiongyi/ammoxidationSIPheavyAOA/
+metawrap classify_bins -b BIN_REASSEMBLY/reassembled_bins \
+  -o BIN_CLASSIFICATION \
+  -t 24
+  
+vim classfication_bins.sh 
+```
+
+# function annotation of bins
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/ammoxidationSIPheavyAOA/FUNCT_ANNOT
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N BIN_CLASSIFICATION
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap-env
+cd /home/xiongyi/ammoxidationSIPheavyAOA/
+metaWRAP annotate_bins -o FUNCT_ANNOT -t 24 -b BIN_REASSEMBLY/reassembled_bins/
+
+vim classfication_bins.sh
+```
+

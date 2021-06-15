@@ -186,9 +186,11 @@ qdel 699112
 pestat
 ```
 
-# species annotation by kraken2
+# install metawrap
 
-```{bash install}
+```{bash}
+# (manual) installation
+conda clean --all
 conda create -y -n metawrap-env python=2.7
 conda activate metawrap-env
 conda config --add channels defaults
@@ -203,6 +205,21 @@ conda install -c bioconda blast openssl=1.0
 # update to newest version
 conda install -y -c ursky metawrap-mg=1.3.2
 
+# Express Installation
+conda create --name metawrap --channel ursky metawrap-mg=1.3.2
+# fix error
+# Can't locate Bio/Root/Version.pm in 
+# @INC (you may need to install the Bio::Root::Version module)
+cd ~/miniconda3/envs/metawrap
+ln -s lib/perl5/site_perl/5.22.0/ perl5
+which config-metawrap
+cp ~/config-metawrap ~/miniconda3/envs/metawrap/bin/config-metawrap
+```
+
+
+# species annotation by kraken2
+
+```{bash install}
 mkdir /home/xiongyi/database/KRAKEN_DB
 cd /home/xiongyi/database/KRAKEN_DB
 kraken2-build --standard --threads 12 --db MY_KRAKEN2_DB
@@ -406,10 +423,10 @@ vim classfication_bins.sh
 #PBS -N BIN_CLASSIFICATION
 #PBS -q cpu
 source ~/miniconda3/etc/profile.d/conda.sh
-conda activate metawrap-env
+conda activate metawrap
 cd /home/xiongyi/ammoxidationSIPheavyAOA/
 metaWRAP annotate_bins -o FUNCT_ANNOT -t 24 -b BIN_REASSEMBLY/reassembled_bins/
 
-vim classfication_bins.sh
+vim annotate_bins.sh
 ```
 

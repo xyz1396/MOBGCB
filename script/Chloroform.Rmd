@@ -1,0 +1,195 @@
+---
+title: "Chloroform"
+author: "xyz"
+date: "2021/6/17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# convert
+
+```{bash}
+/mnt/e/xiongyi/454Data_JiaLab-2020.12.31/from454sff/sff2fastq/sff2fastq \
+  -o JCISQ6U03.fq \
+  JCISQ6U03.sff
+```
+
+# import
+
+[multiplexed single end fastq with barcodes in sequence](https://docs.qiime2.org/2021.4/tutorials/importing/#multiplexed-single-end-fastq-with-barcodes-in-sequence)
+
+[use q2-cutadapt](https://forum.qiime2.org/t/demultiplexing-and-trimming-adapters-from-reads-with-q2-cutadapt/2313)
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+gzip -c JCISQ6U03.fq > JCISQ6U03.fastq.gz
+qiime tools import \
+  --type MultiplexedSingleEndBarcodeInSequence \
+  --input-path JCISQ6U03.fastq.gz \
+  --output-path multiplexed-seqs.qza
+```
+
+```{r}
+df<-read.table("Fasting_Map3.txt",header = F)
+df2<-data.frame(
+  `sample-id` = paste0("J",df$V1),
+  barcode=df$V2
+)
+colnames(df2) <- c("sample-id", "Barcode")
+write.table(
+  df2,
+  "metadata.tsv",
+  quote = F,
+  row.names = F,
+  sep = "\t"
+)
+```
+
+## demux
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime cutadapt demux-single \
+  --i-seqs multiplexed-seqs.qza \
+  --m-barcodes-file metadata.tsv \
+  --m-barcodes-column Barcode \
+  --p-error-rate 0 \
+  --o-per-sample-sequences demultiplexed-seqs.qza \
+  --o-untrimmed-sequences untrimmed.qza \
+  --verbose
+```
+
+## Trim adapters
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime cutadapt trim-single \
+  --i-demultiplexed-sequences demultiplexed-seqs.qza \
+  --p-front GTGCCAGCMGCCGCGG \
+  --p-error-rate 0 \
+  --o-trimmed-sequences trimmed-seqs.qza \
+  --verbose
+```
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime demux summarize \
+  --i-data trimmed-seqs.qza \
+  --o-visualization trimmed-seqs.qzv
+```
+
+## get ASV by dada2
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime dada2 denoise-pyro \
+  --p-trunc-len 370 \
+  --i-demultiplexed-seqs trimmed-seqs.qza \
+  --p-n-threads 6 \
+  --o-table fastq370.table.qza \
+  --o-representative-sequences fastq370.rep-seqs.qza \
+  --o-denoising-stats fastq370.denoising-stats.qza
+
+qiime metadata tabulate \
+    --m-input-file fastq370.denoising-stats.qza \
+    --o-visualization fastq370.denoising-stats.qzv
+```
+
+# Cluster Feature 
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime vsearch cluster-features-de-novo \
+  --i-sequences fastq370.rep-seqs.qza \
+  --i-table fastq370.table.qza \
+  --p-perc-identity 0.97 \
+  --o-clustered-table fastq370.97.table.qza \
+  --o-clustered-sequences fastq370.97.seq.qza \
+  --p-threads 6
+```
+
+# species annotation
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime feature-classifier classify-sklearn \
+  --i-reads fastq370.97.seq.qza \
+  --i-classifier ../../xiongyi/454Data_JiaLab-2020.12.31/2021xiongyiAnalysis/db/SILVA_138/silva138_515F_907R_classifier.qza \
+  --o-classification denovo.clustered.naive_bayes_taxonomy.qza \
+  --p-n-jobs 1
+```
+
+# export OTU table and sequence
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime tools export \
+  --input-path fastq370.97.seq.qza \
+  --output-path .
+
+qiime tools export \
+  --input-path fastq370.97.table.qza \
+  --output-path .
+  
+biom convert -i feature-table.biom \
+  -o feature-table.tsv --to-tsv
+  
+qiime tools export \
+  --input-path denovo.clustered.naive_bayes_taxonomy.qza \
+  --output-path .
+```
+
+# Select OTU with more than 1 sequence
+
+```{r}
+library(tidyverse)
+otu <- read.table("feature-table.tsv",header = T,
+                  sep = "\t",comment.char="",skip=1)
+colnames(otu)[1]<-"OTU.ID"
+tax <- read.table("taxonomy.tsv",
+                  header = T,
+                  sep = "\t")
+# 3 OTU without annotation
+sum(tax$Taxon == "Unassigned")
+# tax<-tax[tax$Taxon != "Unassigned",]
+sum(is.na(tax$Taxon))
+rankTaxon <- data.frame(Taxon = tax$Taxon)
+rankTaxon <-
+  separate(rankTaxon, Taxon, sep = "; ", into = as.character(1:7))
+colnames(rankTaxon) <-
+  c("Kingdom",
+    "Phylum",
+    "Class",
+    "Order",
+    "Family",
+    "Genus",
+    "Species")
+rankTaxon <- cbind(id = tax$Feature.ID,
+                   rankTaxon,
+                   Confidence = tax$Confidence)
+otuWithTax <- right_join(otu, rankTaxon, by = c("OTU.ID" = "id"))
+totalCount <- rowSums(otuWithTax[, 2:ncol(otu)])
+totalPercent <- totalCount / sum(totalCount) * 100
+otuWithTax$totalCount <- totalCount
+otuWithTax$totalPercent <- totalPercent
+otuWithTax <- arrange(otuWithTax, desc(totalCount))
+otuWithTax$OTU.IX<-paste0("OTU",1:nrow(otuWithTax))
+otuWithTax<-otuWithTax[otuWithTax$totalCount > 1,]
+write.csv(otuWithTax,
+          "OTUByNaive_bayesSortByOneMore.csv",
+          row.names = F)
+# 6261 OTU with more than 1 sequences 
+sum(otuWithTax$totalCount > 1)
+```
+

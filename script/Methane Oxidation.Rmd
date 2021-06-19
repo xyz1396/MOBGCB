@@ -116,3 +116,43 @@ megahit -1 cleanFastaq/All1.fastq \
 vim megahit.sh
 ```
 
+# bining
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/MethaneOxidation/INITIAL_BINNING
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N metawrap-binning
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap-env
+cd /home/xiongyi/MethaneOxidation/
+metawrap binning -o INITIAL_BINNING -t 24 \
+  -a ASSEMBLY/final.contigs.fa \
+  --metabat2 --maxbin2 \
+  --concoct cleanFastaq/S*.fastq \
+  --run-checkm
+  
+vim metawrap-binning.sh 
+qsub metawrap-binning.sh
+```
+
+# species annotation
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/MethaneOxidation/KRAKENreads
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N kraken-reads-run
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap-env
+cd /home/xiongyi/MethaneOxidation/
+metawrap kraken2 -o KRAKENreads -t 24 cleanFastaq/S*.fastq ASSEMBLY/final.contigs.fa
+
+vim kraken-reads-run.sh 
+qsub kraken-reads-run.sh
+```
+

@@ -1,0 +1,89 @@
+---
+title: "Chloroform analysis"
+author: "xyz"
+date: "2021/6/28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readxl)
+library(stringr)
+library(dplyr)
+library(vegan)
+library(ggplot2)
+```
+
+# meta data
+
+```{r}
+metaData <-
+  read_xlsx("/mnt/e/BaoLiJun/氯仿熏蒸原始数据及样本信息/otu_table_summary.xlsx",
+            sheet = 2)
+info <- metaData$...1
+soil <- str_sub(info, 1, 1)
+soil <- str_replace(soil, "潮", "Chao soil")
+soil <- str_replace(soil, "黑", "Black soil")
+soil <- str_replace(soil, "红", "Red soil")
+nucleotide <- rep("DNA", 69)
+nucleotide[str_detect(info, "cDNA")] <- "RNA"
+fumigated <- rep(NA, 69)
+fumigated[str_detect(info, "DNAw")] <- F
+fumigated[str_detect(info, "DNAx")] <- T
+rinsed <- rep(F, 69)
+rinsed[str_detect(info, "xi")] <- T
+replication <- str_extract(info, "[1-9]")
+newMetaData <- data.frame(
+  ID = paste0("J",metaData$`Sample ID`),
+  Soil = soil,
+  Nucleotide = nucleotide,
+  Fumigated = fumigated,
+  Rinsed = rinsed,
+  Replication = replication
+)
+newMetaData<-arrange(newMetaData,Soil,Nucleotide,Fumigated,Rinsed)
+write.csv(newMetaData,"Chloroform/metaData.csv",row.names = F)
+```
+
+# PCA
+
+```{r}
+otu <-
+  read.csv("/mnt/e/BaoLiJun/氯仿熏蒸原始数据及样本信息/OTUByNaive_bayesSortByOneMore.csv")
+otu <- otu[, 2:70]
+otu <- prop.table(as.matrix(otu), 2)
+meta <- read.csv("Chloroform/metaData.csv")
+
+pca <- rda(t(otu), scale = T)
+importance <- summary(pca)[["cont"]][["importance"]]
+siteScore <- summary(pca)[["sites"]]
+tempDf <- cbind(x = siteScore[, 1],
+                y = siteScore[, 2],
+                meta[, 2:5])
+
+PCAplot <- function(attri)
+{
+  p <- ggplot(tempDf,
+              aes(
+                x = x,
+                y = y,
+                color = get(attri),
+              )) +
+    geom_point(size = 3) +
+    xlab(paste0("PC1(", round(importance[2, 1] * 100, 2), "%)")) +
+    ylab(paste0("PC2(", round(importance[2, 2] * 100, 2), "%)")) +
+    theme(text = element_text(size = 20))
+  p <- p + labs(color = attri)
+  p + ggsave(paste0("Chloroform/", attri, " PCA.pdf"),
+             width = 8,
+             height = 6)
+}
+PCAplot("Soil")
+PCAplot("Nucleotide")
+PCAplot("Fumigated")
+PCAplot("Rinsed")
+```
+

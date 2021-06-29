@@ -136,6 +136,26 @@ metawrap binning -o INITIAL_BINNING -t 24 \
   
 vim metawrap-binning.sh 
 qsub metawrap-binning.sh
+
+# no maxbin maxbin is too slow
+
+#!/bin/sh -login
+#PBS -o /home/xiongyi/MethaneOxidation/INITIAL_BINNING_no_maxbin
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N metawrap-binning
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap-env
+cd /home/xiongyi/MethaneOxidation/
+metawrap binning -o INITIAL_BINNING_no_maxbin -t 24 \
+  -a ASSEMBLY/final.contigs.fa \
+  --metabat2 \
+  --concoct cleanFastaq/S*.fastq \
+  --run-checkm
+  
+vim metawrap-binning_no_maxbin.sh 
+qsub metawrap-binning_no_maxbin.sh
 ```
 
 # species annotation

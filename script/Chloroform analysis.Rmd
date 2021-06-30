@@ -56,6 +56,8 @@ otu <-
 otu <- otu[, 2:70]
 otu <- prop.table(as.matrix(otu), 2)
 meta <- read.csv("Chloroform/metaData.csv")
+rownames(meta)<-meta$ID
+meta<-meta[colnames(otu),]
 
 pca <- rda(t(otu), scale = T)
 importance <- summary(pca)[["cont"]][["importance"]]

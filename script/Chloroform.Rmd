@@ -85,6 +85,30 @@ qiime demux summarize \
   --o-visualization trimmed-seqs.qzv
 ```
 
+## remove primer
+
+515F GTGCCAGCMGCCGCGG
+907R CCGTCAATTCMTTTRAGTTT
+
+remove sequence shorter than 300
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime cutadapt trim-single \
+  --p-cores 6 \
+  --i-demultiplexed-sequences trimmed-seqs.qza \
+  --p-adapter GTGCCAGCMGCCGCGG...AAACTYAAAKGAATTGACGG \
+  --p-error-rate 0.2 \
+  --p-minimum-length 300 \
+  --o-trimmed-sequences primer_trimed.qza \
+  --verbose &> primer_trimed.log
+  
+qiime demux summarize \
+    --i-data primer_trimed.qza \
+    --o-visualization primer_trimed.qcSummary.qzv
+```
+
 ## get ASV by dada2
 
 ```{bash}
@@ -92,7 +116,7 @@ source ~/miniconda3/etc/profile.d/conda.sh
 conda activate qiime2
 qiime dada2 denoise-pyro \
   --p-trunc-len 370 \
-  --i-demultiplexed-seqs trimmed-seqs.qza \
+  --i-demultiplexed-seqs primer_trimed.qza \
   --p-n-threads 6 \
   --o-table fastq370.table.qza \
   --o-representative-sequences fastq370.rep-seqs.qza \

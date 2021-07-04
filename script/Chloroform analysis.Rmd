@@ -15,6 +15,7 @@ library(stringr)
 library(dplyr)
 library(vegan)
 library(ggplot2)
+library(ggrepel)
 ```
 
 # meta data
@@ -64,9 +65,9 @@ importance <- summary(pca)[["cont"]][["importance"]]
 siteScore <- summary(pca)[["sites"]]
 tempDf <- cbind(x = siteScore[, 1],
                 y = siteScore[, 2],
-                meta[, 2:5])
+                meta[, 1:5])
 
-PCAplot <- function(attri)
+PCAplot <- function(attri, labeled = F, fileName=" PCA.pdf")
 {
   p <- ggplot(tempDf,
               aes(
@@ -79,13 +80,53 @@ PCAplot <- function(attri)
     ylab(paste0("PC2(", round(importance[2, 2] * 100, 2), "%)")) +
     theme(text = element_text(size = 20))
   p <- p + labs(color = attri)
-  p + ggsave(paste0("Chloroform/", attri, " PCA.pdf"),
+  if (labeled == T)
+    p <- p + geom_text_repel(aes(label = ID), max.overlaps = Inf)
+  p + ggsave(paste0("Chloroform/", attri, fileName),
              width = 8,
              height = 6)
 }
 PCAplot("Soil")
+PCAplot("Soil",T," with ID PCA.pdf")
 PCAplot("Nucleotide")
 PCAplot("Fumigated")
 PCAplot("Rinsed")
+```
+
+# NMDS
+
+```{r}
+nmds <- metaMDS(t(otu), distance = 'bray', k = 2)
+tempDf <- cbind(
+  x = nmds$points[, 1],
+  y = nmds$points[, 2],
+  meta[, 1:5]
+)
+stress <- nmds$stress
+NMDSplot <- function(attri, labeled = F, fileName=" NMDS.pdf")
+{
+  p <- ggplot(tempDf,
+              aes(
+                x = x,
+                y = y,
+                color = get(attri),
+              )) +
+    geom_point(size = 3) +
+    xlab("MDS1") +
+    ylab("MDS2") +
+    labs(title = paste0("Stress=", round(stress, 3))) +
+    theme(text = element_text(size = 20))
+  p <- p + labs(color = attri)
+  if (labeled == T)
+    p <- p + geom_text_repel(aes(label = ID), max.overlaps = Inf)
+  p + ggsave(paste0("Chloroform/", attri, fileName),
+             width = 8,
+             height = 6)
+}
+NMDSplot("Soil")
+NMDSplot("Soil",T," with ID NMDS.pdf")
+NMDSplot("Nucleotide")
+NMDSplot("Fumigated")
+NMDSplot("Rinsed")
 ```
 

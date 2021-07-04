@@ -1,0 +1,66 @@
+---
+title: "cai"
+author: "xyz"
+date: "2021/7/2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# unzip
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/cai1/cleanFastaq
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N unzip-fastaq
+#PBS -q cpu 
+cd /home/xiongyi/cai1/cleanFastaq
+gunzip -c /home/xiongyi/caiyuanfeng/data1/14_clean_R1.fq.gz > C14_1.fastq
+gunzip -c /home/xiongyi/caiyuanfeng/data1/14_clean_R2.fq.gz > C14_2.fastq
+gunzip -c /home/xiongyi/caiyuanfeng/data1/H1_2_clean_R1.fq.gz > H1_1.fastq
+gunzip -c /home/xiongyi/caiyuanfeng/data1/H1_2_clean_R2.fq.gz > H1_2.fastq
+gunzip -c /home/xiongyi/caiyuanfeng/data1/H1.totalDNA.R1.fastq.gz > H1T_1.fastq
+gunzip -c /home/xiongyi/caiyuanfeng/data1/H1.totalDNA.R2.fastq.gz > H1T_2.fastq
+
+vim unzip-fastaq.sh
+qsub unzip-fastaq.sh
+```
+
+# assemble
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/cai1/ASSEMBLY
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N merge
+#PBS -q cpu
+cd /home/xiongyi/cai1/
+cat cleanFastaq/*_1.fastq > cleanFastaq/All1.fastq
+cat cleanFastaq/*_2.fastq > cleanFastaq/All2.fastq
+
+vim merge.sh
+
+#!/bin/sh -login
+#PBS -o /home/xiongyi/cai1/ASSEMBLY
+#PBS -j oe
+#PBS -l nodes=node31:ppn=24,walltime=999:00:00,mem=250gb
+#PBS -N megahit
+#PBS -q batch
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate soil
+cd /home/xiongyi/cai1/
+megahit -1 cleanFastaq/All1.fastq \
+  -2 cleanFastaq/All2.fastq \
+  -o ASSEMBLY \
+  --min-count 2 \
+  -m 249 \
+  --k-list 27,37,47,57,67,77,87 \
+  -t 24
+vim megahit.sh
+```
+

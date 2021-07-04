@@ -1,0 +1,111 @@
+---
+title: "YY"
+author: "xyz"
+date: "2021/7/4"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# unzip
+
+```{r}
+# ls ~/YY/A*/A*.gz -l > cleanFastaq/fileList.txt
+library(stringr)
+df<-read.table("../data/YYfileList.txt")
+newName<-str_split(df$V9,"/",simplify = T)[,5]
+newName<-paste0(newName,rep(c("_1","_2"),18),".fastq")
+cmd<-paste0("gunzip -c ",df$V9," > ",newName)
+writeLines(cmd,"../data/YYcmd.txt")
+```
+
+```{bash}
+cd /home/xiongyi/YYDS/
+mkdir cleanFastaq ASSEMBLY KRAKENreads \
+  INITIAL_BINNING BIN_REFINEMENT \
+  BIN_REASSEMBLY BLOBOLOGY QUANT_BINS \
+  FUNCT_ANNOT
+
+#!/bin/sh -login
+#PBS -o /home/xiongyi/YYDS/cleanFastaq
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N unzip-fastaq
+#PBS -q cpu 
+cd /home/xiongyi/YYDS/cleanFastaq
+gunzip -c /home/xiongyi/YY/A13/A13_350.fq1.gz > A13_1.fastq
+gunzip -c /home/xiongyi/YY/A13/A13_350.fq2.gz > A13_2.fastq
+gunzip -c /home/xiongyi/YY/A14/A14_350.fq1.gz > A14_1.fastq
+gunzip -c /home/xiongyi/YY/A14/A14_350.fq2.gz > A14_2.fastq
+gunzip -c /home/xiongyi/YY/A19/A19_350.fq1.gz > A19_1.fastq
+gunzip -c /home/xiongyi/YY/A19/A19_350.fq2.gz > A19_2.fastq
+gunzip -c /home/xiongyi/YY/A1/A1_350.fq1.gz > A1_1.fastq
+gunzip -c /home/xiongyi/YY/A1/A1_350.fq2.gz > A1_2.fastq
+gunzip -c /home/xiongyi/YY/A20/A20_350.fq1.gz > A20_1.fastq
+gunzip -c /home/xiongyi/YY/A20/A20_350.fq2.gz > A20_2.fastq
+gunzip -c /home/xiongyi/YY/A25/A25_350.fq1.gz > A25_1.fastq
+gunzip -c /home/xiongyi/YY/A25/A25_350.fq2.gz > A25_2.fastq
+gunzip -c /home/xiongyi/YY/A26/A26_350.fq1.gz > A26_1.fastq
+gunzip -c /home/xiongyi/YY/A26/A26_350.fq2.gz > A26_2.fastq
+gunzip -c /home/xiongyi/YY/A2/A2_350.fq1.gz > A2_1.fastq
+gunzip -c /home/xiongyi/YY/A2/A2_350.fq2.gz > A2_2.fastq
+gunzip -c /home/xiongyi/YY/A31/A31_350.fq1.gz > A31_1.fastq
+gunzip -c /home/xiongyi/YY/A31/A31_350.fq2.gz > A31_2.fastq
+gunzip -c /home/xiongyi/YY/A32/A32_350.fq1.gz > A32_1.fastq
+gunzip -c /home/xiongyi/YY/A32/A32_350.fq2.gz > A32_2.fastq
+gunzip -c /home/xiongyi/YY/A37/A37_350.fq1.gz > A37_1.fastq
+gunzip -c /home/xiongyi/YY/A37/A37_350.fq2.gz > A37_2.fastq
+gunzip -c /home/xiongyi/YY/A38/A38_350.fq1.gz > A38_1.fastq
+gunzip -c /home/xiongyi/YY/A38/A38_350.fq2.gz > A38_2.fastq
+gunzip -c /home/xiongyi/YY/A43/A43_350.fq1.gz > A43_1.fastq
+gunzip -c /home/xiongyi/YY/A43/A43_350.fq2.gz > A43_2.fastq
+gunzip -c /home/xiongyi/YY/A44/A44_350.fq1.gz > A44_1.fastq
+gunzip -c /home/xiongyi/YY/A44/A44_350.fq2.gz > A44_2.fastq
+gunzip -c /home/xiongyi/YY/A49/A49_350.fq1.gz > A49_1.fastq
+gunzip -c /home/xiongyi/YY/A49/A49_350.fq2.gz > A49_2.fastq
+gunzip -c /home/xiongyi/YY/A50/A50_350.fq1.gz > A50_1.fastq
+gunzip -c /home/xiongyi/YY/A50/A50_350.fq2.gz > A50_2.fastq
+gunzip -c /home/xiongyi/YY/A7/A7_350.fq1.gz > A7_1.fastq
+gunzip -c /home/xiongyi/YY/A7/A7_350.fq2.gz > A7_2.fastq
+gunzip -c /home/xiongyi/YY/A8/A8_350.fq1.gz > A8_1.fastq
+gunzip -c /home/xiongyi/YY/A8/A8_350.fq2.gz > A8_2.fastq
+
+vim unzip-fastaq.sh
+qsub unzip-fastaq.sh
+```
+
+# assemble
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/YYDS/ASSEMBLY
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N merge
+#PBS -q cpu
+cd /home/xiongyi/YYDS/
+cat cleanFastaq/*_1.fastq > cleanFastaq/All1.fastq
+cat cleanFastaq/*_2.fastq > cleanFastaq/All2.fastq
+
+vim merge.sh
+
+#!/bin/sh -login
+#PBS -o /home/xiongyi/YYDS/ASSEMBLY
+#PBS -j oe
+#PBS -l nodes=node31:ppn=24,walltime=999:00:00,mem=250gb
+#PBS -N megahit
+#PBS -q batch
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate soil
+cd /home/xiongyi/YYDS/
+megahit -1 cleanFastaq/All1.fastq \
+  -2 cleanFastaq/All2.fastq \
+  -o ASSEMBLY \
+  --min-count 2 \
+  -m 249 \
+  --k-list 27,37,47,57,67,77,87 \
+  -t 24
+vim megahit.sh
+```

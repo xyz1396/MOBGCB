@@ -23,7 +23,7 @@ writeLines(cmd,"../data/YYcmd.txt")
 
 ```{bash}
 cd /home/xiongyi/YYDS/
-mkdir cleanFastaq ASSEMBLY KRAKENreads \
+mkdir cleanFastaq KRAKENreads \
   INITIAL_BINNING BIN_REFINEMENT \
   BIN_REASSEMBLY BLOBOLOGY QUANT_BINS \
   FUNCT_ANNOT
@@ -92,7 +92,7 @@ cat cleanFastaq/*_2.fastq > cleanFastaq/All2.fastq
 vim merge.sh
 
 #!/bin/sh -login
-#PBS -o /home/xiongyi/YYDS/ASSEMBLY
+#PBS -o /home/xiongyi/YYDS/
 #PBS -j oe
 #PBS -l nodes=node31:ppn=24,walltime=999:00:00,mem=250gb
 #PBS -N megahit
@@ -107,5 +107,7 @@ megahit -1 cleanFastaq/All1.fastq \
   -m 249 \
   --k-list 27,37,47,57,67,77,87 \
   -t 24
+
+cd /home/xiongyi/YYDS/
 vim megahit.sh
 ```

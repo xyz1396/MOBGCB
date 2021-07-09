@@ -16,6 +16,7 @@ library(dplyr)
 library(vegan)
 library(ggplot2)
 library(ggrepel)
+library(ggsignif)
 ```
 
 # meta data
@@ -47,7 +48,104 @@ newMetaData <- data.frame(
 )
 newMetaData<-arrange(newMetaData,Soil,Nucleotide,Fumigated,Rinsed)
 write.csv(newMetaData,"Chloroform/metaData.csv",row.names = F)
+newMetaData<-read.csv("Chloroform/metaData.csv")
 ```
+
+# qPCR
+
+```{r}
+qpcrBlack <-
+  read_xlsx("/mnt/e/BaoLiJun/氯仿熏蒸原始数据及样本信息/xishi100-hei-16S-B.xlsx",
+            sheet = 2)
+qpcrBlack <- qpcrBlack[, c(2, 4)]
+colnames(qpcrBlack) <- c("Treat", "Quant")
+qpcrBlack <- qpcrBlack[!is.na(qpcrBlack$Treat), ]
+qpcrBlack <- group_by(qpcrBlack, Treat)
+qpcrBlack <- summarise(qpcrBlack, Quant = mean(Quant))
+qpcrBlack <- cbind(Soil = "Black soil", qpcrBlack)
+
+qpcrChao <-
+  read_xlsx("/mnt/e/BaoLiJun/氯仿熏蒸原始数据及样本信息/xishi100-chao-16S-B.xlsx",
+            sheet = 2)
+qpcrChao <- qpcrChao[, c(2, 4)]
+colnames(qpcrChao) <- c("Treat", "Quant")
+qpcrChao <- qpcrChao[!is.na(qpcrChao$Treat), ]
+qpcrChao$Treat <- paste0(qpcrChao$Treat, rep(rep(1:3, each = 3), 8))
+qpcrChao <- group_by(qpcrChao, Treat)
+qpcrChao <- summarise(qpcrChao, Quant = mean(Quant))
+qpcrChao <- cbind(Soil = "Chao soil", qpcrChao)
+
+qpcrRed <-
+  read_xlsx("/mnt/e/BaoLiJun/氯仿熏蒸原始数据及样本信息/xishi100-hongrang-16S-B.xlsx",
+            sheet = 2)
+qpcrRed <- qpcrRed[, c(2, 4)]
+colnames(qpcrRed) <- c("Treat", "Quant")
+qpcrRed <- qpcrRed[!is.na(qpcrRed$Treat), ]
+qpcrRed <- group_by(qpcrRed, Treat)
+qpcrRed <- summarise(qpcrRed, Quant = mean(Quant))
+qpcrRed <- cbind(Soil = "Red soil", qpcrRed)
+
+qpcr <- rbind(qpcrBlack, qpcrChao, qpcrRed)
+info <- qpcr$Treat
+nucleotide <- rep("DNA", 72)
+nucleotide[str_detect(info, "cDNA")] <- "RNA"
+fumigated <- rep(NA, 72)
+fumigated[str_detect(info, "DNAw")] <- F
+fumigated[str_detect(info, "DNAx")] <- T
+rinsed <- rep(F, 72)
+rinsed[str_detect(info, "xi")] <- T
+replication <- str_extract(info, "[1-9]")
+
+newQPCR <- data.frame(
+  Soil = qpcr$Soil,
+  Nucleotide = nucleotide,
+  Fumigated = fumigated,
+  Rinsed = rinsed,
+  Replication = replication,
+  Quant = qpcr$Quant
+)
+# convert quant to log10(copy number/g)
+newQPCR$Quant <- log10(newQPCR$Quant * (52.5 / 42.5) * (20 / 7) * 20 / 0.5 /
+                         3 * 100)
+newMetaData <- read.csv("Chloroform/metaData.csv")
+# add ID in metaData
+newQPCR <-
+  merge(
+    newMetaData,
+    newQPCR,
+    by = c("Soil", "Nucleotide", "Fumigated", "Rinsed", "Replication"),
+    all = T
+  )
+newQPCR <- arrange(newQPCR, Soil, Nucleotide, Fumigated, Rinsed)
+write.csv(newQPCR, "Chloroform/qPCR.csv", row.names = F)
+```
+
+# statistics qPCR
+
+```{r}
+qpcr<-read.csv("Chloroform/qPCR.csv")
+qpcr$Rinsed2<-"Rinsed"
+qpcr$Rinsed2[qpcr$Rinsed==F]<-"Not Rinsed"
+qpcr$Group<-paste0(qpcr$Nucleotide,qpcr$Fumigated)
+p<- ggplot(qpcr, aes(x=Group, y=Quant, fill=Fumigated)) + 
+  geom_boxplot(alpha = 0.80) 
+p<-p+scale_x_discrete(labels= c("DNA","DNA","RNA","RNA"))+
+  xlab(NULL)+
+  ylab(expression(log[10]("copy number / g d.w.s")))
+p<-p + facet_grid(vars(Soil), vars(Rinsed2))+ylim(7,12)
+p<- p+ theme_bw() +theme(
+    plot.background = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    text = element_text(size = 20),
+  )
+p<-p+geom_signif(comparisons = list(c("DNAFALSE","DNATRUE"),
+                                    c("RNAFALSE","RNATRUE")), 
+                 test = "t.test",
+              map_signif_level=TRUE)
+p+ggsave("Chloroform/qPCR.pdf",width = 8,height = 6)
+```
+
 
 # PCA
 

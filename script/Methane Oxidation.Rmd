@@ -222,11 +222,21 @@ qsub blobology.sh
 
 # get abundance of bin
 
+error
+128g ram is not enough
+
+processed 1,726,000,000 
+positions/home/xiongyi/miniconda3/envs/metawrap/bin/metawrap-modules/quant_bins.sh: 
+line 128:  3623 Killed
+salmon index -p $threads -t $assembly -i ${out}/assembly_index
+
+use less thread to reduce ram suage
+
 ```{bash}
 #!/bin/sh -login
 #PBS -o /home/xiongyi/MethaneOxidation/QUANT_BINS
 #PBS -j oe
-#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=125gb
 #PBS -N QUANT_BINS
 #PBS -q cpu
 source ~/miniconda3/etc/profile.d/conda.sh
@@ -234,10 +244,10 @@ conda activate metawrap
 cd /home/xiongyi/MethaneOxidation/
 metawrap quant_bins -b BIN_REFINEMENT/metawrap_50_10_bins \
   -o QUANT_BINS \
-  -t 24 \
+  -t 12 \
   -a ASSEMBLY/final.contigs.fa cleanFastaq/*_*.fastq
   
-vim quant_bins.sh 
+vim quant.sh 
 ```
 
 # Re-assemble bins

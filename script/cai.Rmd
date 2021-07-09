@@ -66,3 +66,44 @@ cd /home/xiongyi/cai1/
 vim megahit.sh
 ```
 
+# bining
+
+no maxbin because maxbin is too slow
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/cai1/INITIAL_BINNING
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N metawrap-binning
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap
+cd /home/xiongyi/cai1/
+metawrap binning -o INITIAL_BINNING -t 24 \
+  -a ASSEMBLY/final.contigs.fa \
+  --metabat2 \
+  --concoct cleanFastaq/*_*.fastq \
+  --run-checkm
+  
+vim binning.sh 
+qsub binning.sh
+```
+
+# species annotation
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/cai1/KRAKENreads
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N kraken-reads-run
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap
+cd /home/xiongyi/cai1/
+metawrap kraken2 -o KRAKENreads -t 24 cleanFastaq/*_*.fastq ASSEMBLY/final.contigs.fa
+
+vim kraken-reads-run.sh 
+qsub kraken-reads-run.sh
+```

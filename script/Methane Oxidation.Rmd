@@ -250,6 +250,24 @@ metawrap quant_bins -b BIN_REFINEMENT/metawrap_50_10_bins \
 vim quant.sh 
 ```
 
+```{bash use fat node}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/MethaneOxidation/QUANT_BINS
+#PBS -j oe
+#PBS -l nodes=node31:ppn=24,walltime=999:00:00,mem=250gb
+#PBS -N QUANT_BINS
+#PBS -q batch
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap
+cd /home/xiongyi/MethaneOxidation/
+metawrap quant_bins -b BIN_REFINEMENT/metawrap_50_10_bins \
+  -o QUANT_BINS \
+  -t 24 \
+  -a ASSEMBLY/final.contigs.fa cleanFastaq/*_*.fastq
+  
+vim quant.sh 
+```
+
 # Re-assemble bins
 
 ```{bash}

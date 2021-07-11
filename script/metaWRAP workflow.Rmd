@@ -430,3 +430,13 @@ metaWRAP annotate_bins -o FUNCT_ANNOT -t 24 -b BIN_REASSEMBLY/reassembled_bins/
 vim annotate_bins.sh
 ```
 
+Ammonia oxidation
+
+K10944  	methane/ammonia monooxygenase subunit A [EC:1.14.18.3 1.14.99.39]
+K10945  	methane/ammonia monooxygenase subunit B
+K10946  	methane/ammonia monooxygenase subunit C
+
+K10535  	hydroxylamine dehydrogenase [EC:1.7.2.6]
+
+K00370  	nitrate reductase / nitrite oxidoreductase, alpha subunit [EC:1.7.5.1 1.7.99.-]
+K00371  	nitrate reductase / nitrite oxidoreductase, beta subunit [EC:1.7.5.1 1.7.99.-]

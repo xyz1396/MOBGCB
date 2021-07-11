@@ -17,6 +17,7 @@ library(vegan)
 library(ggplot2)
 library(ggrepel)
 library(ggsignif)
+library(ggpubr)
 ```
 
 # meta data
@@ -120,7 +121,7 @@ newQPCR <- arrange(newQPCR, Soil, Nucleotide, Fumigated, Rinsed)
 write.csv(newQPCR, "Chloroform/qPCR.csv", row.names = F)
 ```
 
-# statistics qPCR
+## statistics qPCR box plot
 
 ```{r}
 qpcr<-read.csv("Chloroform/qPCR.csv")
@@ -144,6 +145,38 @@ p<-p+geom_signif(comparisons = list(c("DNAFALSE","DNATRUE"),
                  test = "t.test",
               map_signif_level=TRUE)
 p+ggsave("Chloroform/qPCR.pdf",width = 8,height = 6)
+```
+
+
+## statistics qPCR bar plot
+
+```{r}
+p <-
+  ggbarplot(
+    qpcr,
+    x = "Group",
+    y = "Quant",
+    fill = "Fumigated",
+    add = 'mean_sd',
+    position = position_dodge(0.8),
+    width = 0.6,
+    size = 1,
+    legend = 'right',
+    ylim = c(7, 12),
+    facet.by = c("Soil", "Rinsed2"),
+    text = element_text(size = 20)
+  )
+p <- p + scale_x_discrete(labels = c("DNA", "DNA", "RNA", "RNA")) +
+  xlab(NULL) +
+  ylab(expression(log[10]("copy number / g d.w.s")))
+p <- p + geom_signif(
+  comparisons = list(c("DNAFALSE", "DNATRUE"),
+                     c("RNAFALSE", "RNATRUE")),
+  test = "t.test",
+  map_signif_level = TRUE,
+  margin_top = 0.1
+)
+p + ggsave("Chloroform/qPCRbarPlot.pdf", width = 8, height = 6)
 ```
 
 

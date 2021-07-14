@@ -153,3 +153,25 @@ metawrap kraken2 -o KRAKENreads -t 24 cleanFastaq/*_*.fastq ASSEMBLY/final.conti
 vim kraken-reads-run.sh 
 qsub kraken-reads-run.sh
 ```
+
+# refine bin
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/YYDS/BIN_REFINEMENT
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N bin_refinement
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap
+cd /home/xiongyi/YYDS/
+metawrap bin_refinement -o BIN_REFINEMENT \
+  -t 24 \
+  -A INITIAL_BINNING/metabat2_bins/ \
+  -B INITIAL_BINNING/concoct_bins/ \
+  -c 50 -x 10
+
+vim bin_refinement.sh 
+qsub bin_refinement.sh
+```

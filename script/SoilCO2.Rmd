@@ -1,0 +1,88 @@
+---
+title: "SoilCO2"
+author: "xyz"
+date: "2021/7/13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readxl)
+library(ggplot2)
+library(ggsignif)
+library(ggpubr)
+library(patchwork)
+```
+
+
+```{r}
+df<-read_xlsx("../data/CO2累积排放量数据.xlsx")
+colnames(df)<-c("ID","Time","Soil","Carbon","Treat","CO2")
+df<-df[-1,]
+df$CO2<-as.numeric(df$CO2)
+df$Treat[is.na(df$Treat)]<-"CK"
+CK<-df[df$Carbon=="CK",]
+df<-df[df$Carbon!="CK",]
+df$Group<-paste0(df$Treat,df$Carbon)
+```
+
+# Sample
+
+```{r}
+p <-
+  ggbarplot(
+    df,
+    x = "Group",
+    y = "CO2",
+    fill = "Carbon",
+    add = 'mean_sd',
+    position = position_dodge(0.8),
+    width = 0.6,
+    ylim = c(0,6000),
+    size = 1,
+    legend = 'right',
+    facet.by = c("Soil","Time")
+  )
+p<-p + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+             text = element_text(size = 10))
+p <- p + scale_x_discrete(labels = rep(c("-N", "+N"),6)) +
+  xlab(NULL) +
+  ylab(expression(CO[2]~emission~(mg/kg)))
+p <- p + geom_signif(
+  comparisons = list(c("-NGlucose","+NGlucose"),
+                     c("-NSodium Malate","+NSodium Malate"),
+                     c("-NBanana straw","+NBanana straw"),
+                     c("-NBanana root","+NBanana root"),
+                     c("-NRice straw","+NRice straw"),
+                     c("-NRice root","+NRice root")),
+  test = "t.test",
+  map_signif_level = TRUE,
+  margin_top = 0.1,
+  textsize = 3
+)
+p + ggsave("../figure/CO2.pdf", width = 8, height = 6)
+```
+
+# CK
+
+```{r}
+p2 <-
+  ggbarplot(
+    CK,
+    x = "Time",
+    y = "CO2",
+    fill = "Soil",
+    add = 'mean_sd',
+    position = position_dodge(0.8),
+    width = 0.6,
+    size = 1,
+    legend = 'right',
+  )
+p2<-p2 + theme(text = element_text(size = 10))
+p2 + ggsave("../figure/CO2CK.pdf", width = 8, height = 2)
+p + p2 + plot_layout(ncol=1,heights = c(5, 1)) + ggsave("../figure/CO2all.pdf", width = 12, height = 9)
+```
+

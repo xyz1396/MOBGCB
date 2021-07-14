@@ -1,0 +1,216 @@
+---
+title: "draw chinese map"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 下载地图
+
+[chinese map](https://www.codenong.com/js19935c44cbf7/)
+
+[实用帖之R-ggplot2 标准中国地图制作](https://mp.weixin.qq.com/s/pK4aI_McO56-y428_Pu3vw)
+
+```{r}
+library(geojsonsf)
+library(sf)
+library(ggplot2)
+library(cowplot)
+library(ggspatial)
+```
+
+```{r}
+######################################
+# source1 民政部
+# link: https://mp.weixin.qq.com/s/qj1SRc6D8sgYJYaZzDux6Q
+######################################
+##  API前缀
+API_pre = "http://xzqh.mca.gov.cn/data/"
+API_pre2 = "https://data.jianshukeji.com/jsonp?filename=geochina/"
+## 1.全国
+China = st_read(dsn = paste0(API_pre, "quanguo.json"),
+                    stringsAsFactors=FALSE)
+st_crs(China) = 4326
+
+# Error: Cannot open "http://data.jianshukeji.com/jsonp?filename=geochina/china.json"
+# 需要直接下载
+# ?({"title":前面的?(与最后的)都要去除
+ChinaJiuDuanXian = st_read(dsn = "http://data.jianshukeji.com/jsonp?filename=geochina/china.json",
+                    stringsAsFactors=FALSE)
+
+# plot
+ggplot(China)+
+  geom_sf()+
+   labs(title="Ministry of Civil of PRC",x="Lon",y="Lat")
+ 
+## 2.全国县
+xian_quanguo = st_read(dsn = paste0(API_pre, "xian_quanguo.json"),
+                           stringsAsFactors=FALSE)
+st_crs(xian_quanguo) = 4326
+
+# save
+geo_map = sf_geojson(xian_quanguo,atomise = T)
+write(geo_map,"China_xian.json")
+geo_map = sf_geojson(China,atomise = T)
+write(geo_map,"China.json")
+```
+
+# 使用本地地图
+
+```{r}
+China1 <- st_read(dsn = "China.json",stringsAsFactors=FALSE)
+China2 <- st_read(dsn = "ChinaJiuDuanxian.json",stringsAsFactors=FALSE)
+China2 <- st_transform(China2,crs = 4326)
+China3 <- st_read(dsn = "jsonFile/data.json",stringsAsFactors=FALSE)
+China3 <- st_transform(China3,crs = 4326)
+
+# coordinate is not right
+p<-ggplot(China3)+
+  geom_sf()+
+  labs(title="Ministry of Civil of PRC",x="Lon",y="Lat")
+p+ggsave("全国.pdf",width = 8,height = 6)
+
+p <- ggplot() + 
+  geom_sf(data = China1,fill=NA) +
+  # set main land coordinate
+  coord_sf(ylim = c(-2287844,1607844),crs = "+proj=laea +lat_0=40 +lon_0=104")+
+  annotation_scale(location = "bl",text_face = "bold") +
+      # spatial-aware automagic north arrow
+       annotation_north_arrow(location = "tl", which_north = "false",
+                             style = north_arrow_fancy_orienteering,
+                            )+
+  guides(fill = guide_legend(override.aes = list(size = 3),
+                             title = "",
+                             label.position = "right",
+                             ncol=3,
+                             ),
+         size = guide_legend(
+                             title = "",
+                             label.position = "right",
+                             ncol=5)) +
+ theme(
+     text = element_text(size = 18,face = "bold"),
+     panel.background = element_rect(fill = NA),
+     panel.grid.major = element_line(colour = "grey80",size=.2),
+     legend.key = element_rect(fill = "white"),
+     legend.position = "bottom",
+ )
+
+pLine9 <- ggplot() +
+  geom_sf(data = China1,fill='NA') + 
+  #geom_sf(data = scatter_df_tro,aes(fill=class,size=data),shape=21,colour='black',stroke=.25)+
+  coord_sf(ylim = c(-4028017,-1877844),xlim = c(117131.4,2115095),crs="+proj=laea +lat_0=40 +lon_0=104")+
+  theme(
+    #aspect.ratio = 1.25, #调节长宽比
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    panel.background = element_blank(),
+    panel.border = element_rect(fill=NA,color="grey10",linetype=1,size=1.),
+    plot.margin=unit(c(0,0,0,0),"mm"))
+
+
+p3<- ggdraw() +
+  draw_plot(p) +
+  draw_plot(pLine9, x = 0.88, y = 0.00, width = 0.1, height = 0.3)
+
+p3+ggsave("全国2.pdf",width = 8,height = 6)
+```
+
+# 使用天地图
+
+[天地图地址](https://www.tianditu.gov.cn/coronavirusmap/)
+
+[数据源](https://www.tianditu.gov.cn/coronavirusmap/static/js/app.8ad31e6c.js)
+
+审图号 GS（2019）1719 号
+
+```{r}
+tianditu1<-st_read(dsn = "TianDiTu.json",stringsAsFactors=FALSE)
+tianditu2<-st_read(dsn = "TianDiTu2.json",stringsAsFactors=FALSE)
+map <- ggplot() +
+  geom_sf(data = tianditu1, fill = NA) +
+  geom_sf(data = tianditu2, color = 'gray50', size = .8) +
+  coord_sf(ylim = c(-2387082, 1654989), crs = "+proj=laea +lat_0=40 +lon_0=104") +
+  annotation_scale(location = "bl", text_face = "bold") +
+  # spatial-aware automagic north arrow
+  annotation_north_arrow(location = "tl",
+                         which_north = "false",
+                         style = north_arrow_fancy_orienteering,) +
+  #定制化图例：这一步可以设计出亮眼的图例哦
+  guides(
+    fill = guide_legend(
+      override.aes = list(size = 3),
+      title = "",
+      label.position = "right",
+      ncol = 3,
+    ),
+    size = guide_legend(
+      title = "",
+      label.position = "right",
+      ncol = 5
+    )
+  ) +
+  #theme_bw()+
+  theme(
+    text = element_text(size = 18, face = "bold"),
+    
+    panel.background = element_rect(fill = NA),
+    panel.grid.major = element_line(colour = "grey80", size = .2),
+    legend.key = element_rect(fill = "white"),
+    legend.position = "bottom",
+  )
+
+nine_map <- ggplot() +
+  geom_sf(data = tianditu1, fill = 'NA') +
+  geom_sf(data = tianditu2, color = 'gray70', size = 1.) +
+  #geom_sf(data = scatter_df_tro,aes(fill=class,size=data),shape=21,colour='black',stroke=.25)+
+  coord_sf(
+    ylim = c(-4028017, -1877844),
+    xlim = c(117131.4, 2115095),
+    crs = "+proj=laea +lat_0=40 +lon_0=104"
+  ) +
+  theme(
+    #aspect.ratio = 1.25, #调节长宽比
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    panel.background = element_blank(),
+    panel.border = element_rect(
+      fill = NA,
+      color = "grey10",
+      linetype = 1,
+      size = 1.
+    ),
+    plot.margin = unit(c(0, 0, 0, 0), "mm")
+  )
+
+
+gg_inset_map = ggdraw() +
+  draw_plot(map) +
+  draw_plot(
+    nine_map,
+    x = 0.895,
+    y = 0.03,
+    width = 0.1,
+    height = 0.3
+  )
+gg_inset_map+ggsave("全国3.pdf",width = 8,height = 8)
+```
+# add barplot on it
+
+[pie plot](https://cran.r-project.org/web/packages/scatterpie/vignettes/scatterpie.html)
+
+[bar plot](https://stackoverflow.com/questions/36063043/how-to-plot-barchart-onto-ggplot2-map)
+
+[point plot](https://www.r-graph-gallery.com/330-bubble-map-with-ggplot2.html)
+
+```{r}
+
+```
+
+

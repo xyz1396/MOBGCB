@@ -19,6 +19,13 @@ library(sf)
 library(ggplot2)
 library(cowplot)
 library(ggspatial)
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(measurements)
+library(scatterpie)
+library(latex2exp)
 ```
 
 ```{r}
@@ -201,6 +208,7 @@ gg_inset_map = ggdraw() +
   )
 gg_inset_map+ggsave("全国3.pdf",width = 8,height = 8)
 ```
+
 # add barplot on it
 
 [pie plot](https://cran.r-project.org/web/packages/scatterpie/vignettes/scatterpie.html)
@@ -210,7 +218,346 @@ gg_inset_map+ggsave("全国3.pdf",width = 8,height = 8)
 [point plot](https://www.r-graph-gallery.com/330-bubble-map-with-ggplot2.html)
 
 ```{r}
+df<-read_xlsx("13C和15N含量（全国地图+柱状图）.xlsx",sheet = 1)
+df[23,3]<-"N26°35'   E106°53'"
+colnames(df)<-paste0("V",1:9)
+df2<-df[c(-1:-2),-1]
+df2<-unite(df2,	Ambient,V4:V5,sep = ";")
+df2<-unite(df2,HighC,V6:V7,sep = ";")
+df2<-unite(df2,HighCN,V8:V9,sep = ";")
+df2<-pivot_longer(df2,!c(V2:V3),names_to = "Treat",values_to = "C13")
+df2<-separate(df2,V3,into = c("Longitude","Latitude"),sep = "  ")
+df2$Latitude<-str_trim(df2$Latitude)
+df2<-separate(df2,C13,into = c("Mean","SD"),sep = ";")
+colnames(df2)[1]<-"Location"
+df2$Longitude<-gsub('N',"",df2$Longitude)
+df2$Longitude<-gsub('°',' ',df2$Longitude)
+df2$Longitude<-gsub('º',' ',df2$Longitude)
+df2$Longitude<-gsub('\'','',df2$Longitude)
+df2$Longitude<-paste(df2$Longitude,0)
+df2$Longitude<-conv_unit(df2$Longitude,from = "deg_min_sec",to="dec_deg")
+df2$Latitude<-gsub('E',"",df2$Latitude)
+df2$Latitude<-gsub('°',' ',df2$Latitude)
+df2$Latitude<-gsub('º',' ',df2$Latitude)
+df2$Latitude<-gsub('\'','',df2$Latitude)
+df2$Latitude<-gsub('S',"",df2$Latitude)
+df2$Latitude<-paste(df2$Latitude,0)
+df2$Latitude<-conv_unit(df2$Latitude,from = "deg_min_sec",to="dec_deg")
+df2$Mean<-as.numeric(df2$Mean)
+df2$SD<-as.numeric(df2$SD)
+df2$Longitude<-as.numeric(df2$Longitude)
+df2$Latitude<-as.numeric(df2$Latitude)
 
+df<-read_xlsx("13C和15N含量（全国地图+柱状图）.xlsx",sheet = 2)
+df[23,3]<-"N26°35'   E106°53'"
+colnames(df)<-paste0("V",1:9)
+df3<-df[c(-1:-2),-1]
+df3<-unite(df3,	Ambient,V4:V5,sep = ";")
+df3<-unite(df3,HighC,V6:V7,sep = ";")
+df3<-unite(df3,HighCN,V8:V9,sep = ";")
+df3<-pivot_longer(df3,!c(V2:V3),names_to = "Treat",values_to = "C13")
+df3<-separate(df3,V3,into = c("Longitude","Latitude"),sep = "  ")
+df3$Latitude<-str_trim(df3$Latitude)
+df3<-separate(df3,C13,into = c("Mean","SD"),sep = ";")
+colnames(df3)[1]<-"Location"
+df3$Longitude<-gsub('N',"",df3$Longitude)
+df3$Longitude<-gsub('°',' ',df3$Longitude)
+df3$Longitude<-gsub('º',' ',df3$Longitude)
+df3$Longitude<-gsub('\'','',df3$Longitude)
+df3$Longitude<-paste(df3$Longitude,0)
+df3$Longitude<-conv_unit(df3$Longitude,from = "deg_min_sec",to="dec_deg")
+df3$Latitude<-gsub('E',"",df3$Latitude)
+df3$Latitude<-gsub('°',' ',df3$Latitude)
+df3$Latitude<-gsub('º',' ',df3$Latitude)
+df3$Latitude<-gsub('\'','',df3$Latitude)
+df3$Latitude<-gsub('S',"",df3$Latitude)
+df3$Latitude<-paste(df3$Latitude,0)
+df3$Latitude<-conv_unit(df3$Latitude,from = "deg_min_sec",to="dec_deg")
+df3$Mean<-as.numeric(df3$Mean)
+df3$SD<-as.numeric(df3$SD)
+df3$Longitude<-as.numeric(df3$Longitude)
+df3$Latitude<-as.numeric(df3$Latitude)
 ```
 
+# 全国点图
+
+```{r}
+tianditu1 <- st_read(dsn = "TianDiTu.json", stringsAsFactors = FALSE)
+tianditu2 <- st_read(dsn = "TianDiTu2.json", stringsAsFactors = FALSE)
+
+scatter_df_tro <- st_as_sf(df2,coords = c("Latitude","Longitude"),crs = 4326)
+
+map <- ggplot() +
+  geom_sf(data = tianditu1, fill = NA) +
+  geom_sf(data = tianditu2, color = 'gray50', size = .8) +
+  geom_sf(data = scatter_df_tro, aes(fill = Treat, size = Mean), shape = 21) +
+  scale_fill_manual(values = c("#E21C21", "#3A7CB5", "#51AE4F")) +
+  # scale_size(range = c(1, 5)) +
+  coord_sf(ylim = c(-2387082, 1654989), crs = "+proj=laea +lat_0=40 +lon_0=104") +
+  annotation_scale(location = "bl", text_face = "bold") +
+  # spatial-aware automagic north arrow
+  annotation_north_arrow(location = "tl",
+                         which_north = "false",
+                         style = north_arrow_fancy_orienteering,
+  ) +
+  #定制化图例：这一步可以设计出亮眼的图例哦
+  guides(
+    fill = guide_legend(
+      override.aes = list(size = 3),
+      title = "",
+      label.position = "right",
+      ncol = 3,
+    ),
+    size = guide_legend(
+      title = "",
+      label.position = "right",
+      ncol = 5
+    )
+  ) +
+  #theme_bw()+
+  theme(
+    text = element_text(size = 18, face = "bold"),
+    
+    panel.background = element_rect(fill = NA),
+    panel.grid.major = element_line(colour = "grey80", size = .2),
+    legend.key = element_rect(fill = "white"),
+    legend.position = "bottom",
+  )
+
+nine_map <- ggplot() +
+  geom_sf(data = tianditu1, fill = 'NA') +
+  geom_sf(data = tianditu2, color = 'gray70', size = 1.) +
+  #geom_sf(data = scatter_df_tro,aes(fill=class,size=data),shape=21,colour='black',stroke=.25)+
+  coord_sf(
+    ylim = c(-4028017,-1877844),
+    xlim = c(117131.4, 2115095),
+    crs = "+proj=laea +lat_0=40 +lon_0=104"
+  ) +
+  theme(
+    #aspect.ratio = 1.25, #调节长宽比
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    panel.background = element_blank(),
+    panel.border = element_rect(
+      fill = NA,
+      color = "grey10",
+      linetype = 1,
+      size = 1.
+    ),
+    plot.margin = unit(c(0, 0, 0, 0), "mm")
+  )
+
+
+gg_inset_map = ggdraw() +
+  draw_plot(map) +
+  draw_plot(
+    nine_map,
+    x = 0.895,
+    y = 0.03,
+    width = 0.1,
+    height = 0.3
+  )
+gg_inset_map + ggsave("全国点图.pdf", width = 8, height = 8)
+```
+
+# 全国饼图
+
+geom_sf 和其他geom不兼容，叠加后不能使用coor_equal()函数，使用coor_sf()，
+其它图层坐标会偏移
+
+```{r}
+dfPie<-pivot_wider(df2[,1:5],names_from = "Treat",values_from = "Mean")
+dfPie$Sum<-rowSums(dfPie[,4:6])
+dfPie$region<-1:nrow(dfPie)
+
+dfPie2<-pivot_wider(df3[,1:5],names_from = "Treat",values_from = "Mean")
+dfPie2$Sum<-rowSums(dfPie2[,4:6])
+dfPie2$region<-1:nrow(dfPie2)
+
+tian1<-st_transform(tianditu1,st_crs(4326))
+
+p1 <- ggplot() +
+  geom_sf(data = tianditu1, fill = NA) +
+  geom_sf(data = tianditu2, color = 'gray50', size = .8) +
+  coord_sf( crs = "+proj=laea +lat_0=40 +lon_0=104")
+
+p2 <- ggplot() +
+  geom_scatterpie(
+    aes(
+      x = Latitude,
+      y = Longitude,
+      group = region,
+      r = Sum / 5000
+    ),
+    data = dfPie,
+    cols = colnames(dfPie)[4:6]
+  ) +
+  coord_map("lambert", lat0 = 40, lon0 = 104)
+
+# 两张图并排没有叠在一起 
+p1+p2
+
+p3<- ggplot() +
+  geom_sf(data = tianditu1, fill = NA) +
+  geom_sf(data = tianditu2, color = 'gray50', size = .8) + 
+  geom_scatterpie(
+    aes(
+      x = Latitude,
+      y = Longitude,
+      group = region,
+      r = Sum / 3000
+    ),
+    data = dfPie,
+    cols = colnames(dfPie)[4:6]
+  )+
+  ylim(18,53)+
+  annotation_scale(location = "bl", text_face = "bold") +
+  annotation_north_arrow(location = "tl",
+                         which_north = "false",
+                         style = north_arrow_fancy_orienteering,
+  ) +
+  guides(
+    fill = guide_legend(
+      override.aes = list(size = 3),
+      title = TeX("$^{13}C\\,(mg/kg\\,soil)$"),
+      label.position = "right",
+      ncol = 3,
+    ),
+    size = guide_legend(
+      title = "",
+      label.position = "right",
+      ncol = 5
+    )
+  ) +
+  theme_bw()+
+  theme(
+    text = element_text(size = 18, face = "bold"),
+    panel.background = element_rect(fill = NA),
+    panel.grid.major = element_line(colour = "grey80", size = .2),
+    legend.key = element_rect(fill = "white"),
+    legend.position = "bottom",
+  )
+
+p4 <- ggplot() +
+  geom_sf(data = tianditu1, fill = 'NA') +
+  geom_sf(data = tianditu2, color = 'gray70', size = 1.) +
+  coord_sf(
+    ylim = c(3,20),
+    xlim = c(108, 120),
+  ) +
+  theme(
+    #aspect.ratio = 1.25, #调节长宽比
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    panel.background = element_blank(),
+    panel.border = element_rect(
+      fill = NA,
+      color = "grey10",
+      linetype = 1,
+      size = 1.
+    ),
+    plot.margin = unit(c(0, 0, 0, 0), "mm")
+  )
+
+p5<- ggdraw() +
+  draw_plot(p3) +
+  draw_plot(
+    p4,
+    x = 0.86,
+    y = 0.16,
+    width = 0.1,
+    height = 0.3
+  )
+p5 + ggsave("全国饼图13C.pdf", width = 8, height = 6)
+
+p6<- ggplot() +
+  geom_sf(data = tianditu1, fill = NA) +
+  geom_sf(data = tianditu2, color = 'gray50', size = .8) + 
+  geom_scatterpie(
+    aes(
+      x = Latitude,
+      y = Longitude,
+      group = region,
+      r = Sum / 50
+    ),
+    data = dfPie2,
+    cols = colnames(dfPie)[4:6]
+  )+
+  ylim(18,53)+
+  annotation_scale(location = "bl", text_face = "bold") +
+  annotation_north_arrow(location = "tl",
+                         which_north = "false",
+                         style = north_arrow_fancy_orienteering,
+  ) +
+  guides(
+    fill = guide_legend(
+      override.aes = list(size = 3),
+      title = TeX("$^{15}N\\,(mg/kg\\,soil)$"),
+      label.position = "right",
+      ncol = 3,
+    ),
+    size = guide_legend(
+      title = "",
+      label.position = "right",
+      ncol = 5
+    )
+  ) +
+  theme_bw()+
+  theme(
+    text = element_text(size = 18, face = "bold"),
+    
+    panel.background = element_rect(fill = NA),
+    panel.grid.major = element_line(colour = "grey80", size = .2),
+    legend.key = element_rect(fill = "white"),
+    legend.position = "bottom",
+  )
+
+p7<- ggdraw() +
+  draw_plot(p6) +
+  draw_plot(
+    p4,
+    x = 0.86,
+    y = 0.16,
+    width = 0.1,
+    height = 0.3
+  )
+p7 + ggsave("全国饼图15N.pdf", width = 8, height = 6)
+```
+
+# 全国柱状图
+
+[改变地图投影方式](https://stackoverflow.com/questions/64721222/inconsistent-behaviour-of-ggplot-when-adding-points-to-sf-maps)
+
+```{r}
+highC<-df2[df2$Treat=="HighC",]
+highC<-as.data.frame(highC)
+tian4326<-st_transform(tianditu1,st_crs(4326))
+ggplot(data = tian4326) + geom_sf() + geom_rect(
+  data = highC,
+  color="red",
+  aes(
+    ymin = Longitude,
+    ymax = Longitude + Mean / 1000,
+    xmin = Latitude - 0.1,
+    xmax = Latitude + 0.1
+  )
+)
+
+ggplot(data = tian4326) + geom_sf() + geom_point(
+  x = 100,
+  y = 35,
+  size = 10,
+  colour = "red"
+) 
+
+ggplot(data = tian4326) + geom_sf() + geom_scatterpie(
+  aes(x = Latitude, y = Longitude, group = region),
+  data = dfPie,
+  cols = colnames(dfPie)[4:6]
+)
+```
 

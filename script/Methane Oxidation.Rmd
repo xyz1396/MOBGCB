@@ -200,6 +200,10 @@ qsub bin_refinement.sh
 
 # Visualize bins
 
+[bowtie2-build-s: symbol lookup error, undefined symbol](https://www.jianshu.com/p/930231b30503)
+
+conda install tbb=2020.2
+
 ```{bash}
 #!/bin/sh -login
 #PBS -o /home/xiongyi/MethaneOxidation/BLOBOLOGY

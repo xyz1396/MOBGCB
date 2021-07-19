@@ -309,7 +309,7 @@ vim reassemble_bins.sh
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate metawrap
 cd /home/xiongyi/MethaneOxidation/
-metawrap classify_bins -b BIN_REASSEMBLY/reassembled_bins \
+metawrap classify_bins -b BIN_REFINEMENT/metawrap_50_10_bins \
   -o BIN_CLASSIFICATION \
   -t 24
   
@@ -323,12 +323,12 @@ vim classfication_bins.sh
 #PBS -o /home/xiongyi/MethaneOxidation/FUNCT_ANNOT
 #PBS -j oe
 #PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
-#PBS -N BIN_CLASSIFICATION
+#PBS -N BIN_FUNCT_ANNOT
 #PBS -q cpu
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate metawrap
 cd /home/xiongyi/MethaneOxidation/
-metaWRAP annotate_bins -o FUNCT_ANNOT -t 24 -b BIN_REASSEMBLY/reassembled_bins/
+metaWRAP annotate_bins -o FUNCT_ANNOT -t 24 -b BIN_REFINEMENT/metawrap_50_10_bins
 
 vim annotate_bins.sh
 ```

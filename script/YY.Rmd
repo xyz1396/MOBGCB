@@ -26,7 +26,7 @@ cd /home/xiongyi/YYDS/
 mkdir cleanFastaq KRAKENreads \
   INITIAL_BINNING BIN_REFINEMENT \
   BIN_REASSEMBLY BLOBOLOGY QUANT_BINS \
-  FUNCT_ANNOT
+  BIN_CLASSIFICATION FUNCT_ANNOT
 
 #!/bin/sh -login
 #PBS -o /home/xiongyi/YYDS/cleanFastaq
@@ -174,4 +174,62 @@ metawrap bin_refinement -o BIN_REFINEMENT \
 
 vim bin_refinement.sh 
 qsub bin_refinement.sh
+```
+
+# Visualize bins
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/YYDS/BLOBOLOGY
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N BLOBOLOGY
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap
+cd /home/xiongyi/YYDS/
+metawrap blobology -a ASSEMBLY/final.contigs.fa \
+  -t 24 \
+  -o BLOBOLOGY \
+  --bins BIN_REFINEMENT/metawrap_50_10_bins \
+  cleanFastaq/*_*.fastq
+
+vim blobology.sh 
+qsub blobology.sh
+```
+
+# species annotation of bins
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/YYDS/BIN_CLASSIFICATION
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N BIN_CLASSIFICATION
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap
+cd /home/xiongyi/YYDS/
+metawrap classify_bins -b BIN_REFINEMENT/metawrap_50_10_bins \
+  -o BIN_CLASSIFICATION \
+  -t 24
+  
+vim classfication_bins.sh 
+```
+
+# function annotation of bins
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/YYDS/FUNCT_ANNOT
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N BIN_FUNCT_ANNOT
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap
+cd /home/xiongyi/YYDS/
+metaWRAP annotate_bins -o FUNCT_ANNOT -t 24 -b BIN_REFINEMENT/metawrap_50_10_bins
+
+vim annotate_bins.sh
 ```

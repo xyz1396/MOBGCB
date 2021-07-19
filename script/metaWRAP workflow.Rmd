@@ -214,6 +214,9 @@ cd ~/miniconda3/envs/metawrap
 ln -s lib/perl5/site_perl/5.22.0/ perl5
 which config-metawrap
 cp ~/config-metawrap ~/miniconda3/envs/metawrap/bin/config-metawrap
+
+# fix bowtie2-build-s: symbol lookup error, undefined symbol
+conda install tbb=2020.2
 ```
 
 

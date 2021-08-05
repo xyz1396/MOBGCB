@@ -1,0 +1,198 @@
+---
+title: "cai"
+author: "xyz"
+date: "2021/7/2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# unzip
+
+```{bash}
+cd cai2
+mkdir cleanFastaq KRAKENreads \
+  INITIAL_BINNING BIN_REFINEMENT \
+  BIN_REASSEMBLY BLOBOLOGY QUANT_BINS \
+  BIN_CLASSIFICATION FUNCT_ANNOT
+
+#!/bin/sh -login
+#PBS -o /home/xiongyi/cai2/cleanFastaq
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N unzip-fastaq
+#PBS -q cpu 
+cd /home/xiongyi/cai2/cleanFastaq
+gunzip -c /home/xiongyi/caiyuanfeng/data2/E3_clean_R1.fq.gz > E3_1.fastq
+gunzip -c /home/xiongyi/caiyuanfeng/data2/E3_clean_R2.fq.gz > E3_2.fastq
+gunzip -c /home/xiongyi/caiyuanfeng/data2/E10_clean_R1.fq.gz > E10_1.fastq
+gunzip -c /home/xiongyi/caiyuanfeng/data2/E10_clean_R2.fq.gz > E10_2.fastq
+gunzip -c /home/xiongyi/caiyuanfeng/data2/E13_clean_R1.fq.gz > E13_1.fastq
+gunzip -c /home/xiongyi/caiyuanfeng/data2/E13_clean_R2.fq.gz > E13_2.fastq
+gunzip -c /home/xiongyi/caiyuanfeng/data2/E17_clean_R1.fq.gz > E17_1.fastq
+gunzip -c /home/xiongyi/caiyuanfeng/data2/E17_clean_R2.fq.gz > E17_2.fastq
+
+vim unzip-fastaq.sh
+qsub unzip-fastaq.sh
+```
+
+# assemble
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/cai2/cleanFastaq
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N merge
+#PBS -q cpu
+cd /home/xiongyi/cai2/
+cat cleanFastaq/*_1.fastq > cleanFastaq/All1.fastq
+cat cleanFastaq/*_2.fastq > cleanFastaq/All2.fastq
+
+vim merge.sh
+
+#!/bin/sh -login
+#PBS -o /home/xiongyi/cai2/
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=124gb
+#PBS -N megahit
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate soil
+cd /home/xiongyi/cai2/
+megahit -1 cleanFastaq/All1.fastq \
+  -2 cleanFastaq/All2.fastq \
+  -o ASSEMBLY \
+  --min-count 2 \
+  -m 123 \
+  --k-list 27,37,47,57,67,77,87 \
+  -t 24
+  
+cd /home/xiongyi/cai2/
+vim megahit.sh
+```
+
+# bining
+
+no maxbin because maxbin is too slow
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/cai2/INITIAL_BINNING
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N metawrap-binning
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap
+cd /home/xiongyi/cai2/
+metawrap binning -o INITIAL_BINNING -t 24 \
+  -a ASSEMBLY/final.contigs.fa \
+  --metabat2 \
+  --concoct cleanFastaq/*_*.fastq \
+  --run-checkm
+  
+vim binning.sh 
+qsub binning.sh
+```
+
+# species annotation
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/cai2/KRAKENreads
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N kraken-reads-run
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap
+cd /home/xiongyi/cai2/
+metawrap kraken2 -o KRAKENreads -t 24 cleanFastaq/*_*.fastq ASSEMBLY/final.contigs.fa
+
+vim kraken-reads-run.sh 
+qsub kraken-reads-run.sh
+```
+
+# refine bin
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/cai2/BIN_REFINEMENT
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N bin_refinement
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap
+cd /home/xiongyi/cai2/
+metawrap bin_refinement -o BIN_REFINEMENT \
+  -t 24 \
+  -A INITIAL_BINNING/metabat2_bins/ \
+  -B INITIAL_BINNING/concoct_bins/ \
+  -c 50 -x 10
+
+vim bin_refinement.sh 
+qsub bin_refinement.sh
+```
+
+# Visualize bins
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/cai2/BLOBOLOGY
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N BLOBOLOGY
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap
+cd /home/xiongyi/cai2/
+metawrap blobology -a ASSEMBLY/final.contigs.fa \
+  -t 24 \
+  -o BLOBOLOGY \
+  --bins BIN_REFINEMENT/metawrap_50_10_bins \
+  cleanFastaq/*_*.fastq
+
+vim blobology.sh 
+qsub blobology.sh
+```
+
+# species annotation of bins
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/cai2/BIN_CLASSIFICATION
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N BIN_CLASSIFICATION
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap
+cd /home/xiongyi/cai2/
+metawrap classify_bins -b BIN_REFINEMENT/metawrap_50_10_bins \
+  -o BIN_CLASSIFICATION \
+  -t 24
+  
+vim classfication_bins.sh 
+```
+
+# function annotation of bins
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/cai2/FUNCT_ANNOT
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N BIN_FUNCT_ANNOT
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap
+cd /home/xiongyi/cai2/
+metaWRAP annotate_bins -o FUNCT_ANNOT -t 24 -b BIN_REFINEMENT/metawrap_50_10_bins
+
+vim annotate_bins.sh
+```
+

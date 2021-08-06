@@ -16,7 +16,7 @@ cd cai2
 mkdir cleanFastaq KRAKENreads \
   INITIAL_BINNING BIN_REFINEMENT \
   BIN_REASSEMBLY BLOBOLOGY QUANT_BINS \
-  BIN_CLASSIFICATION FUNCT_ANNOT
+  BIN_CLASSIFICATION FUNCT_ANNOT QUANT_CONTIG
 
 #!/bin/sh -login
 #PBS -o /home/xiongyi/cai2/cleanFastaq
@@ -72,6 +72,35 @@ megahit -1 cleanFastaq/All1.fastq \
   
 cd /home/xiongyi/cai2/
 vim megahit.sh
+```
+
+# QUANT_CONTIG
+
+```{bash}
+conda create -c bioconda -n salmon salmon
+
+#!/bin/sh -login
+#PBS -o /home/xiongyi/cai2/QUANT_CONTIG
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N QUANT_CONTIG
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate salmon
+cd /home/xiongyi/cai2/
+salmon index -t ASSEMBLY/final.contigs.fa \
+  -i QUANT_CONTIG/contig_index \
+  --threads 24
+salmon quant -i QUANT_CONTIG/contig_index \
+  -l A \
+  -1 cleanFastaq/*_1.fastq \
+  -2 cleanFastaq/*_2.fastq \
+  --validateMappings \
+  -o QUANT_CONTIG \
+  --threads 24
+
+vim QUANT_CONTIG.sh
+qsub QUANT_CONTIG.sh
 ```
 
 # bining
@@ -195,4 +224,6 @@ metaWRAP annotate_bins -o FUNCT_ANNOT -t 24 -b BIN_REFINEMENT/metawrap_50_10_bin
 
 vim annotate_bins.sh
 ```
+
+
 

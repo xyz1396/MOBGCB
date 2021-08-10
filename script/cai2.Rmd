@@ -159,8 +159,8 @@ conda activate metawrap
 cd /home/xiongyi/cai2/
 metawrap bin_refinement -o BIN_REFINEMENT \
   -t 24 \
-  -A INITIAL_BINNING/metabat2_bins/ \
-  -B INITIAL_BINNING/concoct_bins/ \
+  -A INITIAL_BINNING/metabat2_bins \
+  -B INITIAL_BINNING/concoct_bins \
   -c 50 -x 10
 
 vim bin_refinement.sh 

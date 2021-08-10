@@ -26,6 +26,7 @@ library(stringr)
 library(measurements)
 library(scatterpie)
 library(latex2exp)
+library(Cairo)
 ```
 
 ```{r}
@@ -277,6 +278,51 @@ df3$Mean<-as.numeric(df3$Mean)
 df3$SD<-as.numeric(df3$SD)
 df3$Longitude<-as.numeric(df3$Longitude)
 df3$Latitude<-as.numeric(df3$Latitude)
+
+df4<-rbind(cbind(Element="13C",df2),cbind(Element="15N",df3))
+
+p <- ggplot(df2, aes(x = Treat, y = Mean, fill = Treat)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = Mean - SD, ymax = Mean + SD),
+                width = .2,
+                position = position_dodge(.9)) +
+  facet_wrap(vars(Location), ncol = 4) +
+  xlab(NULL) +
+  ylab(TeX("$^{13}C\\,(mg/kg\\,soil)$")) +
+  theme_bw() +
+  theme(
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    text = element_text(size = 10),
+    panel.background = NULL,
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+cairo_pdf(file = "13C柱状图errorbar.pdf", width = 8, height = 16)
+p
+dev.off()
+p <- ggplot(df3, aes(x = Treat, y = Mean, fill = Treat)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = Mean - SD, ymax = Mean + SD),
+                width = .2,
+                position = position_dodge(.9)) +
+  facet_wrap(vars(Location), ncol = 4) +
+  xlab(NULL) +
+  ylab(TeX("$^{15}N\\,(mg/kg\\,soil)$")) +
+  theme_bw() +
+  theme(
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    text = element_text(size = 10),
+    panel.background = NULL,
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+cairo_pdf(file = "15N柱状图errorbar.pdf", width = 8, height = 16)
+p
+dev.off()
 ```
 
 # 全国点图
@@ -360,6 +406,39 @@ gg_inset_map = ggdraw() +
     height = 0.3
   )
 gg_inset_map + ggsave("全国点图.pdf", width = 8, height = 8)
+
+#### 全国点图只有点 ####
+
+map <- ggplot() +
+  geom_sf(data = tianditu1, fill = NA) +
+  geom_sf(data = tianditu2, color = 'gray50', size = .8) +
+  geom_sf(data = scatter_df_tro, size=2,fill="black",shape = 21) +
+  coord_sf(ylim = c(-2387082, 1654989), crs = "+proj=laea +lat_0=40 +lon_0=104") +
+  annotation_scale(location = "bl", text_face = "bold") +
+  # spatial-aware automagic north arrow
+  annotation_north_arrow(location = "tl",
+                         which_north = "false",
+                         style = north_arrow_fancy_orienteering,
+  ) +
+  theme_bw()+
+  theme(
+    text = element_text(size = 18, face = "bold"),
+    
+    panel.background = element_rect(fill = NA),
+    panel.grid.major = element_line(colour = "grey80", size = .2),
+    legend.key = element_rect(fill = "white"),
+    legend.position = "bottom",
+  )
+gg_inset_map = ggdraw() +
+  draw_plot(map) +
+  draw_plot(
+    nine_map,
+    x = 0.885,
+    y = 0.05,
+    width = 0.1,
+    height = 0.3
+  )
+gg_inset_map + ggsave("全国点图只有黑点.pdf", width = 8, height = 8)
 ```
 
 # 全国饼图

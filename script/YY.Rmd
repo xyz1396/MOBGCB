@@ -233,3 +233,62 @@ metaWRAP annotate_bins -o FUNCT_ANNOT -t 24 -b BIN_REFINEMENT/metawrap_50_10_bin
 
 vim annotate_bins.sh
 ```
+
+# fraggenscan
+
+```{bash}
+conda install -c bioconda fraggenescan
+
+#!/bin/sh -login
+#PBS -o /home/xiongyi/YYDS/FRAGGENE
+#PBS -j oe
+#PBS -l nodes=node31:ppn=24,walltime=999:00:00,mem=250gb
+#PBS -N FRAGGENE
+#PBS -q batch
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate soil
+cd /home/xiongyi/YYDS/
+run_FragGeneScan.pl \
+  -genome=ASSEMBLY/final.contigs.fa \
+  -out=FRAGGENE/YYfrag \
+  -complete=0 \
+  -train=complete \
+  -thread=24
+  
+vim FRAGGENE.sh
+```
+
+# eggnog
+
+[eggnog-mapper](https://github.com/eggnogdb/eggnog-mapper)
+
+```{bash}
+conda activate soil
+conda install -c bioconda eggnog-mapper cd-hit
+cd /home/xiongyi/YYDS/EGG
+nohup download_eggnog_data.py \
+  --data_dir /home/xiongyi/database/EGGNOG \
+  -y \
+  > eggDB.log.txt 2>&1 & 
+
+#!/bin/sh -login
+#PBS -o /home/xiongyi/YYDS/EGG
+#PBS -j oe
+#PBS -l nodes=node31:ppn=24,walltime=999:00:00,mem=250gb
+#PBS -N CDHIT
+#PBS -q batch
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate soil
+cd /home/xiongyi/YYDS/
+cd-hit \
+  -i FRAGGENE/YYfrag.faa \
+  -o EGG/YYfrag95.faa \
+  -d 0 \
+  -c 0.95 \
+  -aS 0.9 \
+  -T 24 \
+  -M 256000
+  
+vim CDHIT.sh
+```
+

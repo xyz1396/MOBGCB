@@ -290,5 +290,24 @@ cd-hit \
   -M 256000
   
 vim CDHIT.sh
+
+#!/bin/sh -login
+#PBS -o /home/xiongyi/YYDS/EGG
+#PBS -j oe
+#PBS -l nodes=node31:ppn=24,walltime=999:00:00,mem=250gb
+#PBS -N EGGNOG
+#PBS -q batch
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate soil
+cd /home/xiongyi/YYDS/
+emapper.py \
+  --data_dir /home/xiongyi/database/EGGNOG \
+  -i EGG/YYfrag95.faa \
+  -o EGG/YYfrag95.annotation \
+  --pident 80 \
+  --evalue 1e-5 \
+  --cpu 24 
+
+vim EGGNOG.sh  
 ```
 

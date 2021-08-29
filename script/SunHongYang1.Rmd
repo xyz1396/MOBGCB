@@ -79,6 +79,9 @@ vim megahit.sh
 [get unique value of bash array](https://stackoverflow.com/questions/13648410/how-can-i-get-unique-values-from-an-array-in-bash)
 
 [get substring of value](https://stackoverflow.com/questions/22404139/how-to-get-substring-from-filename-in-unix-shellscripting)
+a=25_good_dfdfdf
+echo ${a#*_}   # remove prefix ending in "_"
+echo ${a%_*}   # remove suffix starting with "_"
 
 ```{bash}
 conda create -c bioconda -n salmon salmon
@@ -107,7 +110,7 @@ for file in ${files[@]}; do
     -1 ${file}_1.fastq \
     -2 ${file}_2.fastq \
     --validateMappings \
-    -o QUANT_CONTIG/${file} \
+    -o QUANT_CONTIG/${file#*/} \
     --threads 24
 done
 

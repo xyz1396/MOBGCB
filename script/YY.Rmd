@@ -112,6 +112,38 @@ cd /home/xiongyi/YYDS/
 vim megahit.sh
 ```
 
+# quantify contig
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/YYDS/QUANT_CONTIG
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N QUANT_CONTIG
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate salmon
+cd /home/xiongyi/YYDS/
+salmon index -t ASSEMBLY/final.contigs.fa \
+  -i QUANT_CONTIG/contig_index \
+  --threads 24
+files=(cleanFastaq/*_*.fastq)
+files=($(echo "${files[@]}" | tr ' ' '\n' | cut -d '_' -f1 | tr '\n' ' '))
+files=($(echo "${files[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+for file in ${files[@]}; do 
+    salmon quant -i QUANT_CONTIG/contig_index \
+    -l A \
+    -1 ${file}_1.fastq \
+    -2 ${file}_2.fastq \
+    --validateMappings \
+    -o QUANT_CONTIG/${file#*/} \
+    --threads 24
+done
+
+vim QUANT_CONTIG.sh
+qsub QUANT_CONTIG.sh
+```
+
 # bining
 
 no maxbin because maxbin is too slow
@@ -309,5 +341,33 @@ emapper.py \
   --cpu 24 
 
 vim EGGNOG.sh  
+```
+
+# kofam
+
+```{bash}
+conda install -c bioconda kofamscan
+nohup wget https://www.genome.jp/ftp/db/kofam/profiles.tar.gz \
+  > profiles.log.txt 2>&1 &
+  
+#!/bin/sh -login
+#PBS -o /home/xiongyi/YYDS/EGG
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N KOFAM
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate soil
+cd /home/xiongyi/YYDS/
+exec_annotation \
+  -f detail-tsv \
+  -E 1e-5 \
+  --profile /home/xiongyi/database/kofam/profiles \
+  --ko-list /home/xiongyi/database/kofam/ko_list \
+  --cpu 24 \
+  -o EGG/YYfrag95.kegg.txt \
+  EGG/YYfrag95.faa
+  
+vim KOFAM.sh
 ```
 

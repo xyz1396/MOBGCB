@@ -3,7 +3,7 @@ title: "Meta Tutorial"
 author: "xyz"
 date: "2021/9/3"
 output: 
-  pdf_document:
+  word_document:
     toc: true
 ---
 

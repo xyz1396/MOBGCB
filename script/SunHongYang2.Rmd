@@ -1,7 +1,7 @@
 ---
-title: "sun hong yang"
+title: "sun hong yang 2"
 author: "xyz"
-date: "2021/8/27"
+date: "2021/9/3"
 output: html_document
 ---
 
@@ -12,19 +12,40 @@ knitr::opts_chunk$set(echo = TRUE)
 # unzip
 
 ```{bash}
-cd /home/xiongyi/sunhongyang/MbPL2020111531
+cd /home/xiongyi/sunhongyang/MbPL202011862
 mkdir cleanFastaq KRAKENreads \
   INITIAL_BINNING BIN_REFINEMENT \
   BIN_REASSEMBLY BLOBOLOGY QUANT_BINS \
   BIN_CLASSIFICATION FUNCT_ANNOT QUANT_CONTIG
+  
+# get all fastq name
+ls -l RAW/ | grep ^- | awk '{print $9}'
 
 #!/bin/sh -login
-#PBS -o /home/xiongyi/sunhongyang/MbPL2020111531/cleanFastaq
+#PBS -o /home/xiongyi/sunhongyang/MbPL202011862/cleanFastaq
 #PBS -j oe
 #PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
 #PBS -N unzip-fastaq
 #PBS -q cpu 
-cd /home/xiongyi/sunhongyang/MbPL2020111531/cleanFastaq
+cd /home/xiongyi/sunhongyang/MbPL202011862/cleanFastaq
+gunzip -c /home/xiongyi/sunhongyang/MbPL202011862/RAW/0nian_clean_R1.fq.gz > T0_1.fastq
+gunzip -c /home/xiongyi/sunhongyang/MbPL202011862/RAW/0nian_clean_R2.fq.gz > T0_2.fastq
+gunzip -c /home/xiongyi/sunhongyang/MbPL202011862/RAW/120nian_clean_R1.fq.gz > T120_1.fastq
+gunzip -c /home/xiongyi/sunhongyang/MbPL202011862/RAW/120nian_clean_R2.fq.gz > T120_2.fastq
+gunzip -c /home/xiongyi/sunhongyang/MbPL202011862/RAW/2_T_DNA_clean_R1.fq.gz > T2_1.fastq
+gunzip -c /home/xiongyi/sunhongyang/MbPL202011862/RAW/2_T_DNA_clean_R2.fq.gz > T2_2.fastq
+gunzip -c /home/xiongyi/sunhongyang/MbPL202011862/RAW/3_T_DNA_clean_R1.fq.gz > T3_1.fastq
+gunzip -c /home/xiongyi/sunhongyang/MbPL202011862/RAW/3_T_DNA_clean_R2.fq.gz > T3_2.fastq
+gunzip -c /home/xiongyi/sunhongyang/MbPL202011862/RAW/40nian_clean_R1.fq.gz > T40_1.fastq
+gunzip -c /home/xiongyi/sunhongyang/MbPL202011862/RAW/40nian_clean_R2.fq.gz > T40_2.fastq
+gunzip -c /home/xiongyi/sunhongyang/MbPL202011862/RAW/5_T_DNA_clean_R1.fq.gz > T5_1.fastq
+gunzip -c /home/xiongyi/sunhongyang/MbPL202011862/RAW/5_T_DNA_clean_R2.fq.gz > T5_2.fastq
+gunzip -c /home/xiongyi/sunhongyang/MbPL202011862/RAW/6_T_DNA_clean_R1.fq.gz > T6_1.fastq
+gunzip -c /home/xiongyi/sunhongyang/MbPL202011862/RAW/6_T_DNA_clean_R2.fq.gz > T6_2.fastq
+gunzip -c /home/xiongyi/sunhongyang/MbPL202011862/RAW/8_T_DNA_clean_R1.fq.gz > T8_1.fastq
+gunzip -c /home/xiongyi/sunhongyang/MbPL202011862/RAW/8_T_DNA_clean_R2.fq.gz > T8_2.fastq
+gunzip -c /home/xiongyi/sunhongyang/MbPL202011862/RAW/9_T_DNA_clean_R1.fq.gz > T9_1.fastq
+gunzip -c /home/xiongyi/sunhongyang/MbPL202011862/RAW/9_T_DNA_clean_R2.fq.gz > T9_2.fastq
 gunzip -c /home/xiongyi/sunhongyang/MbPL2020111531/RAW/1_T_DNA_clean_R1.fq.gz > T1_1.fastq
 gunzip -c /home/xiongyi/sunhongyang/MbPL2020111531/RAW/1_T_DNA_clean_R2.fq.gz > T1_2.fastq
 gunzip -c /home/xiongyi/sunhongyang/MbPL2020111531/RAW/4_T_DNA_clean_R1.fq.gz > T4_1.fastq
@@ -40,26 +61,26 @@ qsub unzip-fastaq.sh
 
 ```{bash}
 #!/bin/sh -login
-#PBS -o /home/xiongyi/sunhongyang/MbPL2020111531/cleanFastaq
+#PBS -o /home/xiongyi/sunhongyang/MbPL202011862/cleanFastaq
 #PBS -j oe
 #PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
 #PBS -N merge
 #PBS -q cpu
-cd /home/xiongyi/sunhongyang/MbPL2020111531/
+cd /home/xiongyi/sunhongyang/MbPL202011862/
 cat cleanFastaq/*_1.fastq > cleanFastaq/All1.fastq
 cat cleanFastaq/*_2.fastq > cleanFastaq/All2.fastq
 
 vim merge.sh
 
 #!/bin/sh -login
-#PBS -o /home/xiongyi/sunhongyang/MbPL2020111531/
+#PBS -o /home/xiongyi/sunhongyang/MbPL202011862/
 #PBS -j oe
 #PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=124gb
 #PBS -N megahit
 #PBS -q cpu
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate soil
-cd /home/xiongyi/sunhongyang/MbPL2020111531/
+cd /home/xiongyi/sunhongyang/MbPL202011862/
 megahit -1 cleanFastaq/All1.fastq \
   -2 cleanFastaq/All2.fastq \
   -o ASSEMBLY \
@@ -68,7 +89,7 @@ megahit -1 cleanFastaq/All1.fastq \
   --k-list 27,37,47,57,67,77,87 \
   -t 24
   
-cd /home/xiongyi/sunhongyang/MbPL2020111531/
+cd /home/xiongyi/sunhongyang/MbPL202011862/
 vim megahit.sh
 ```
 
@@ -87,14 +108,14 @@ echo ${a%_*}   # remove suffix starting with "_"
 conda create -c bioconda -n salmon salmon
 
 #!/bin/sh -login
-#PBS -o /home/xiongyi/sunhongyang/MbPL2020111531/QUANT_CONTIG
+#PBS -o /home/xiongyi/sunhongyang/MbPL202011862/QUANT_CONTIG
 #PBS -j oe
 #PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
 #PBS -N QUANT_CONTIG
 #PBS -q cpu
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate salmon
-cd /home/xiongyi/sunhongyang/MbPL2020111531/
+cd /home/xiongyi/sunhongyang/MbPL202011862/
 salmon index -t ASSEMBLY/final.contigs.fa \
   -i QUANT_CONTIG/contig_index \
   --threads 24
@@ -124,14 +145,14 @@ no maxbin because maxbin is too slow
 
 ```{bash}
 #!/bin/sh -login
-#PBS -o /home/xiongyi/sunhongyang/MbPL2020111531/INITIAL_BINNING
+#PBS -o /home/xiongyi/sunhongyang/MbPL202011862/INITIAL_BINNING
 #PBS -j oe
 #PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
 #PBS -N metawrap-binning
 #PBS -q cpu
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate metawrap
-cd /home/xiongyi/sunhongyang/MbPL2020111531/
+cd /home/xiongyi/sunhongyang/MbPL202011862/
 metawrap binning -o INITIAL_BINNING -t 24 \
   -a ASSEMBLY/final.contigs.fa \
   --metabat2 \
@@ -146,14 +167,14 @@ qsub binning.sh
 
 ```{bash}
 #!/bin/sh -login
-#PBS -o /home/xiongyi/sunhongyang/MbPL2020111531/KRAKENreads
+#PBS -o /home/xiongyi/sunhongyang/MbPL202011862/KRAKENreads
 #PBS -j oe
 #PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
 #PBS -N kraken-reads-run
 #PBS -q cpu
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate metawrap
-cd /home/xiongyi/sunhongyang/MbPL2020111531/
+cd /home/xiongyi/sunhongyang/MbPL202011862/
 metawrap kraken2 -o KRAKENreads -t 24 cleanFastaq/*_*.fastq ASSEMBLY/final.contigs.fa
 
 vim kraken-reads-run.sh 
@@ -164,14 +185,14 @@ qsub kraken-reads-run.sh
 
 ```{bash}
 #!/bin/sh -login
-#PBS -o /home/xiongyi/sunhongyang/MbPL2020111531/BIN_REFINEMENT
+#PBS -o /home/xiongyi/sunhongyang/MbPL202011862/BIN_REFINEMENT
 #PBS -j oe
 #PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
 #PBS -N bin_refinement
 #PBS -q cpu
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate metawrap
-cd /home/xiongyi/sunhongyang/MbPL2020111531/
+cd /home/xiongyi/sunhongyang/MbPL202011862/
 metawrap bin_refinement -o BIN_REFINEMENT \
   -t 24 \
   -A INITIAL_BINNING/metabat2_bins \
@@ -186,14 +207,14 @@ qsub bin_refinement.sh
 
 ```{bash}
 #!/bin/sh -login
-#PBS -o /home/xiongyi/sunhongyang/MbPL2020111531/BLOBOLOGY
+#PBS -o /home/xiongyi/sunhongyang/MbPL202011862/BLOBOLOGY
 #PBS -j oe
 #PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
 #PBS -N BLOBOLOGY
 #PBS -q cpu
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate metawrap
-cd /home/xiongyi/sunhongyang/MbPL2020111531/
+cd /home/xiongyi/sunhongyang/MbPL202011862/
 metawrap blobology -a ASSEMBLY/final.contigs.fa \
   -t 24 \
   -o BLOBOLOGY \
@@ -208,14 +229,14 @@ qsub blobology.sh
 
 ```{bash}
 #!/bin/sh -login
-#PBS -o /home/xiongyi/sunhongyang/MbPL2020111531/BIN_CLASSIFICATION
+#PBS -o /home/xiongyi/sunhongyang/MbPL202011862/BIN_CLASSIFICATION
 #PBS -j oe
 #PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
 #PBS -N BIN_CLASSIFICATION
 #PBS -q cpu
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate metawrap
-cd /home/xiongyi/sunhongyang/MbPL2020111531/
+cd /home/xiongyi/sunhongyang/MbPL202011862/
 metawrap classify_bins -b BIN_REFINEMENT/metawrap_50_10_bins \
   -o BIN_CLASSIFICATION \
   -t 24
@@ -227,14 +248,14 @@ vim classfication_bins.sh
 
 ```{bash}
 #!/bin/sh -login
-#PBS -o /home/xiongyi/sunhongyang/MbPL2020111531/FUNCT_ANNOT
+#PBS -o /home/xiongyi/sunhongyang/MbPL202011862/FUNCT_ANNOT
 #PBS -j oe
 #PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
 #PBS -N BIN_FUNCT_ANNOT
 #PBS -q cpu
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate metawrap
-cd /home/xiongyi/sunhongyang/MbPL2020111531/
+cd /home/xiongyi/sunhongyang/MbPL202011862/
 metaWRAP annotate_bins -o FUNCT_ANNOT -t 24 -b BIN_REFINEMENT/metawrap_50_10_bins
 
 vim annotate_bins.sh

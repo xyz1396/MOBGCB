@@ -75,9 +75,9 @@ vim merge.sh
 #!/bin/sh -login
 #PBS -o /home/xiongyi/sunhongyang/MbPL202011862/
 #PBS -j oe
-#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=124gb
+#PBS -l nodes=node31:ppn=24,walltime=999:00:00,mem=250gb
 #PBS -N megahit
-#PBS -q cpu
+#PBS -q batch
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate soil
 cd /home/xiongyi/sunhongyang/MbPL202011862/

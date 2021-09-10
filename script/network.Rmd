@@ -1,0 +1,229 @@
+---
+title: "network"
+author: "xyz"
+date: "2021/9/6"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readxl)
+library(SpiecEasi)
+library(igraph)
+library(ggplot2)
+```
+
+# make meta data
+
+```{r}
+otu <- read_xlsx("rice root-16S-cww.xlsx",
+                 col_names = F,
+                 skip = 2)
+colnames(otu) <- c("Tax", paste0("J", 1:18))
+otu <- cbind(IX = paste0("IX", 1:nrow(otu)), otu)
+write.csv(otu, "otu.csv", row.names = F)
+meta <- read_xlsx("rice root-16S-cww.xlsx",
+                  col_names = F,
+                  n_max = 2)
+meta <- t(meta)
+colnames(meta) <- c("Treatment", "File")
+meta <- meta[-1, ]
+meta <- cbind(ID = paste0("J", 1:18), meta)
+row.names(meta) <- NULL
+write.csv(meta, "meta.csv", row.names = F)
+```
+
+# get SpiecEasi network
+
+```{r}
+otuMatrix <- otu[,-1:-2]
+otuMatrix <- as.data.frame(otuMatrix)
+rownames(otuMatrix) <- otu$IX
+# # filter out otu with abundance <%0.001
+# abundance <- rowSums(otuMatrix) / sum(otuMatrix)
+# otuMatrix <- otuMatrix[abundance > 0.00001, ]
+otuSD <- apply(otuMatrix, 1, sd)
+otuMatrix <- otuMatrix[otuSD > 0.5,]
+
+pargs2 <- list(rep.num = 50,
+               seed = 10010,
+               ncores = 6)
+otu.spiec <-
+    spiec.easi(
+        t(otuMatrix),
+        method = 'mb',
+        lambda.min.ratio = 1e-3,
+        nlambda = 30,
+        sel.criterion = 'bstars',
+        pulsar.select = TRUE,
+        pulsar.params = pargs2
+    )
+# # no interaction left
+# otu.spiec <-
+#     spiec.easi(
+#         t(otuMatrix),
+#         method = 'glasso',
+#         lambda.min.ratio = 1e-2,
+#         nlambda = 20,
+#         pulsar.params = pargs2
+#     )
+# saveRDS(otu.spiec,"glasso.rds")
+saveRDS(otu.spiec,"SpiecEasiMB.rds")
+adjacency_unweight <- data.frame(as.matrix(otu.spiec$refit$stars))
+rownames(adjacency_unweight) <- rownames(otuMatrix)
+colnames(adjacency_unweight) <- rownames(otuMatrix)
+
+otu.igraph <-
+    adj2igraph(getRefit(otu.spiec),
+               vertex.attr = list(label = rownames(otuMatrix),
+                                  name =
+                                      rownames(otuMatrix)))
+vsize <- rowMeans(clr(t(otuMatrix), 1))
+# convert negative value
+vsize <- vsize - min(vsize) + 0.1
+am.coord <- layout.fruchterman.reingold(otu.igraph)
+par(mfrow = c(1, 2))
+pdf("network by SPIEC-EASI.pdf",
+    width = 12,
+    height = 12)
+plot(
+    otu.igraph,
+    layout = am.coord,
+    vertex.size = vsize,
+    vertex.label = NA
+)
+dev.off()
+plot(
+    otu.igraph,
+    vertex.size = 2,
+    vertex.label = NA,
+    margin = c(0, 0, 0, 0)
+)
+```
+
+# Divide modules
+  
+[grouped layout by modularity](https://stackoverflow.com/questions/16390221/how-to-make-grouped-layout-in-igraph)  
+  
+```{r}
+V(otu.igraph)$degree <- degree(otu.igraph)
+
+# cluster_fast_greedy has multiple models
+set.seed(123)
+V(otu.igraph)$modularity <-
+    membership(cluster_fast_greedy(otu.igraph))
+
+pdf("network by SPIEC-EASI with modules.pdf",
+    width = 16,
+    height = 16)
+plot(
+    otu.igraph,
+    layout = am.coord,
+    vertex.size = vsize,
+    vertex.label = NA,
+    edge.curved = T,
+    margin = c(0, 0, 0, 0),
+    edge.width=0.1,
+    vertex.color = V(otu.igraph)$modularity
+)
+dev.off()
+
+# grouped layout by modularity
+g<-otu.igraph
+weight.community <-
+    function(row,
+             membership,
+             weigth.within,
+             weight.between) {
+        if (as.numeric(membership[which(names(membership) == row[1])]) ==
+            as.numeric(membership[which(names(membership) == row[2])])) {
+            weight = weigth.within
+        }
+        else{
+            weight = weight.between
+        }
+        return(weight)
+    }
+E(g)$weight <-
+    apply(get.edgelist(g),
+          1,
+          weight.community,
+          membership(cluster_fast_greedy(g)),
+          10,
+          1)
+g$layout <- layout.fruchterman.reingold(g, weights = E(g)$weight)
+
+pdf("network by SPIEC-EASI with modules grouped.pdf",
+    width = 16,
+    height = 16)
+plot(
+    g,
+    vertex.size = vsize,
+    vertex.label = NA,
+    edge.curved = T,
+    margin = c(0, 0, 0, 0),
+    edge.width=0.1,
+    vertex.color = V(g)$modularity
+)
+dev.off()
+
+# Outputs the degree of node, and a list of modules it divides
+nodes_list <- data.frame(
+    nodes_id = V(otu.igraph)$name,
+    nodes_size = vsize ,
+    degree = V(otu.igraph)$degree,
+    modularity = V(otu.igraph)$modularity
+)
+write.csv(nodes_list, "nodes_list.csv", row.names = F)
+edges_list <- as_edgelist(otu.igraph)
+colnames(edges_list) <- c("from", "to")
+write.csv(edges_list, "edges_list.csv", row.names = F)
+
+source('zi_pi.r')
+# Calculate inner modules connectivity (Zi) and connectivity (Pi) between modules
+# Specifies the column name for the degree of node and the degree of module in the Adjacency Matrix,
+rownames(nodes_list) <- nodes_list$nodes_id
+zi_pi <-
+    zi.pi(nodes_list,
+          adjacency_unweight,
+          degree = 'degree',
+          modularity_class = 'modularity')
+# According to the threshold,
+# the nodes can be divided into 4 types and their distribution can be illustrated
+# Na value should be removed, should not be treated as zero
+zi_pi <- na.omit(zi_pi)
+zi_pi[which(zi_pi$within_module_connectivities < 2.5 &
+                zi_pi$among_module_connectivities < 0.62), 'type'] <- 'Peripherals'
+zi_pi[which(zi_pi$within_module_connectivities < 2.5 &
+                zi_pi$among_module_connectivities >= 0.62), 'type'] <- 'Connectors'
+zi_pi[which(zi_pi$within_module_connectivities >= 2.5 &
+                zi_pi$among_module_connectivities < 0.62), 'type'] <- 'Module hubs'
+zi_pi[which(zi_pi$within_module_connectivities >= 2.5 &
+                zi_pi$among_module_connectivities >= 0.62), 'type'] <-
+    'Network hubs'
+write.csv(zi_pi,"connector.csv",row.names = F)
+
+p<-ggplot(zi_pi,
+       aes(among_module_connectivities, within_module_connectivities)) +
+    geom_point(aes(color = type), alpha = 0.5, size = 2) +
+    scale_color_manual(
+        values = c('gray', 'red', 'blue', 'purple'),
+        limits = c('Peripherals', 'Connectors', 'Module hubs', 'Network hubs')
+    ) +
+    theme(
+        panel.grid = element_blank(),
+        axis.line = element_line(colour = 'black'),
+        panel.background = element_blank(),
+        legend.key = element_blank(),
+        text = element_text(size = 15)
+    ) +
+    labs(x = 'Among-module connectivities', y = 'Within-module connectivities', 
+         color = '') +
+    geom_vline(xintercept = 0.62, linetype="dotted") +
+    geom_hline(yintercept = 2.5, linetype="dotted")
+p+ggsave("connector.pdf",width = 8, height = 6)
+```
+

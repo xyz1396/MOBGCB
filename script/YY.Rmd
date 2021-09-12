@@ -371,3 +371,30 @@ exec_annotation \
 vim KOFAM.sh
 ```
 
+# maxquant
+
+<tempFolder></tempFolder> cannot set as raw file path
+
+```{bash}
+conda create -n maxquant maxquant=1.6.3.4
+
+mkdir MS MSmaxquant
+cd MSmaxquant
+# it cannot read symbolic link
+# ln -s ../MS/* .
+cp ../MS/* .
+
+#!/bin/sh -login
+#PBS -o /home/xiongyi/YYDS/MSmaxquant
+#PBS -j oe
+#PBS -l nodes=node31:ppn=24,walltime=999:00:00,mem=250gb
+#PBS -N MSmaxquant
+#PBS -q batch
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate maxquant2
+cd /home/xiongyi/YYDS/MSmaxquant
+maxquant soilProteinDB.xml
+
+vim maxquant.sh
+```
+

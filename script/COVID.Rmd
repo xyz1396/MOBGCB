@@ -1,0 +1,29 @@
+---
+title: "COVID"
+author: "xyz"
+date: "2021/9/29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(readr)
+```
+
+https://raw.githubusercontent.com/canghailan/Wuhan-2019-nCoV/master/Wuhan-2019-nCoV.csv
+https://github.com/canghailan/Wuhan-2019-nCoV
+https://zhuanlan.zhihu.com/p/141426729
+
+```{r}
+# cd ../data/
+# wget https://raw.githubusercontent.com/canghailan/Wuhan-2019-nCoV/master/Wuhan-2019-nCoV.csv
+df<-read.csv("../data/Wuhan-2019-nCoV.csv")
+df<-df[df$country=="中国" & df$city !="",-2:-3]
+df<-arrange(df,province,city,date)
+write_excel_csv(df,"../table/ChinaCOVID.csv")
+```
+

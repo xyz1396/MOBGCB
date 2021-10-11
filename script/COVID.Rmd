@@ -12,6 +12,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(dplyr)
 library(readr)
+library(data.table)
+library(tibble)
 ```
 
 https://raw.githubusercontent.com/canghailan/Wuhan-2019-nCoV/master/Wuhan-2019-nCoV.csv
@@ -25,5 +27,33 @@ df<-read.csv("../data/Wuhan-2019-nCoV.csv")
 df<-df[df$country=="中国" & df$city !="",-2:-3]
 df<-arrange(df,province,city,date)
 write_excel_csv(df,"../table/ChinaCOVID.csv")
+```
+
+```{r}
+# wget https://github.com/BlankerL/DXY-COVID-19-Data/releases/download/2021.09.30/DXYArea.csv
+df<-fread("../data/DXYArea.csv")
+df<-df[df$countryName=="中国" ,c(5,8:13,16:19)]
+df<-arrange(df,provinceName,cityName,updateTime)
+shanghai<-df[df$provinceName=="上海市" & df$cityName=="黄浦区",]
+write_excel_csv(df,"../table/ChinaCOVID2020-2021.csv")
+
+city<-df[!is.na(df$city_confirmedCount),c(1,7,6,8:11)]
+city<-as.data.frame(city)
+city$updateTime<-round.POSIXt(city$updateTime,"days")
+city<-group_by(city,provinceName,cityName,updateTime) 
+city <-
+  summarise(city, across(city_confirmedCount:city_deadCount, function(x) {
+    max(x, na.rm = T)
+  }))
+write_excel_csv(city,"../table/ChinaCityCOVID2020-2021.csv")
+
+cityNewCase<-group_by(city,provinceName,cityName)
+cityNewCase <-
+  summarise(cityNewCase, across(city_confirmedCount:city_deadCount, function(x) {
+    c(0,diff(x))
+  }))
+cityNewCase<-add_column(cityNewCase,updateTime=city$updateTime,.after = 2)
+cityNewCase[,-1:-3][cityNewCase[,-1:-3]<0]<-0
+write_excel_csv(cityNewCase,"../table/ChinaCityNewCaseCOVID2020-2021.csv")
 ```
 

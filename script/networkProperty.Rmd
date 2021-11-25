@@ -1,0 +1,70 @@
+---
+title: "networkProperty"
+author: "xyz"
+date: "2021/9/13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(ggsignif)
+library(ggpubr)
+```
+
+```{r}
+meta<-read.csv("meta.csv")
+node<-read.csv("nodes_list.csv")
+otu<-read.csv("otu.csv")
+otu<-otu[otu$IX %in% node$id,]
+rownames(otu)<-otu$IX
+
+otuAbundance<-t(prop.table(as.matrix(otu[,-1:-2]),2)*100)
+otuAbundance<-cbind.data.frame(Treatment=meta$Treatment,
+                               Sample=rownames(otuAbundance),otuAbundance)
+otuAbundance<-pivot_longer(otuAbundance,!(Treatment:Sample),
+                           names_to = "ID",values_to = "Abundance")
+otuAbundance<-left_join(otuAbundance,node[,c(1,4)],by=c("ID"="id"))
+colnames(otuAbundance)[5]<-"Modularity"
+otuAbundance<-otuAbundance[,-3]
+otuAbundance<-group_by(otuAbundance,Treatment,Sample,Modularity)
+otuAbundance<-summarise(otuAbundance,Abundance=sum(Abundance))
+otuAbundance$Modularity<-as.factor(otuAbundance$Modularity)
+otuAbundance$Treatment<-as.factor(otuAbundance$Treatment)
+write.csv(otuAbundance,"networkOtuAbundance.csv",row.names = F)
+```
+
+```{r}
+p <-
+  ggbarplot(
+    otuAbundance,
+    x = "Treatment",
+    y = "Abundance",
+    fill = "Modularity",
+    add = 'mean_sd',
+    ylim = c(0,130),
+    position = position_dodge(0.8),
+    width = 0.6,
+    size = 1,
+    facet.by = c("Modularity")
+  )
+p<-p + theme(text = element_text(size = 10))+ylab("Abundance (%)")
+  
+p <- p + geom_signif(
+  comparisons = list(c("Day 0","Treatment 1"),
+                     c("Day 0","Treatment 2"),
+                     c("Day 0","Treatment 3")),
+  test = "t.test",
+  map_signif_level = TRUE,
+  margin_top = 0.05,
+  textsize = 3,
+  step_increase =0.1
+)
+p + ggsave("network abundance.pdf", width = 8, height = 6)
+```
+

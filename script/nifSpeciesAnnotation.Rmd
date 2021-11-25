@@ -1,0 +1,77 @@
+---
+title: "nifSpeciesAnnotation"
+author: "xyz"
+date: "2021/10/28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Species annotation
+
+```{bash}
+#!/bin/sh -login
+#PBS -o /home/xiongyi/moyongliang
+#PBS -j oe
+#PBS -l nodes=1:ppn=24,walltime=999:00:00,mem=120gb
+#PBS -N nifSpeciesAnnotation
+#PBS -q cpu
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate metawrap
+cd /home/xiongyi/moyongliang
+metawrap kraken2 -o ./ \
+  -t 24 \
+  dna-rna-nifH-sequences.fasta mcrA-dna-sequences.fasta
+  
+kraken2 --db ~/database/KRAKEN_DB/MY_KRAKEN2_DB \
+  --report k2_report.txt --report-minimizer-data \
+    --output k2_output.txt dna-rna-nifH-sequences.fasta --threads 24
+
+vim kraken-reads-run.sh 
+qsub kraken-reads-run.sh
+```
+
+# convert tax id to ranked taxon
+
+[ete3 ncbitaxonomy](http://etetoolkit.org/docs/latest/tutorial/tutorial_ncbitaxonomy.html)
+
+```{python}
+import pandas as pd
+from ete3 import NCBITaxa
+import re
+
+nif=pd.read_csv("/mnt/e/莫永亮高通量数据/吉林-nifH-RNA/temp/mergedDNARNA/mergedDNARNAfiltered/nifH.krak2",sep="\t",header=None)
+tax=nif[2].to_list()
+pattern=re.compile("\(taxid.*\)")
+ids=[re.findall(pattern,i)[0][7:-1] for i in tax]
+
+ncbi = NCBITaxa()
+def getRankedtax(id):
+  if id == '0':
+    return "|".join(["Unknown"] * 8)
+  lineage = ncbi.get_lineage(id)
+  rank = ncbi.get_rank(lineage)
+  rankNames = ["superkingdom","phylum","class","order","family","genus","species","strain"]
+  rankedTax = ["Unknown"] * 8
+  for ix,level in rank.items():
+    i = 0
+    for rankName in rankNames:
+      if level == rankName:
+        rankedTax[i] = list(ncbi.get_taxid_translator([ix]).values())[0]
+      i=i+1
+  return "|".join(rankedTax) 
+Rankedtax = [getRankedtax(id) for id in ids]
+
+nif.insert(loc=2,column="Rankedtax",value=Rankedtax)
+nif.to_csv("/mnt/e/莫永亮高通量数据/吉林-nifH-RNA/temp/mergedDNARNA/mergedDNARNAfiltered/nifHtax.tsv", sep='\t', header = False)
+
+mcrA=pd.read_csv("/mnt/e/莫永亮高通量数据/吉林-nifH-RNA/temp/mergedDNARNA/mergedDNARNAfiltered/mcrA.krak2",sep="\t",header=None)
+tax=mcrA[2].to_list()
+pattern=re.compile("\(taxid.*\)")
+ids=[re.findall(pattern,i)[0][7:-1] for i in tax]
+Rankedtax = [getRankedtax(id) for id in ids]
+mcrA.insert(loc=2,column="Rankedtax",value=Rankedtax)
+mcrA.to_csv("/mnt/e/莫永亮高通量数据/吉林-nifH-RNA/temp/mergedDNARNA/mergedDNARNAfiltered/mcrAtax.tsv", sep='\t', header = False)
+```

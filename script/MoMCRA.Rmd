@@ -1,0 +1,282 @@
+---
+title: "Mo16S"
+author: "xyz"
+date: "2021/10/26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# import
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime tools import \
+  --type MultiplexedPairedEndBarcodeInSequence \
+  --input-path ../data/fastq \
+  --output-path ../temp/multiplexed-seqs.qza
+```
+
+```{r}
+df<-readxl::read_xlsx("../data/mapping2mcrA吉林.xlsx")
+df2<-data.frame(
+  `sample-id` = df$`#SampleID`,
+  barcode=df$BarcodeSequence
+)
+colnames(df2) <- c("sample-id", "Barcode")
+write.table(
+  df2,
+  "../data/metadata.tsv",
+  quote = F,
+  row.names = F,
+  sep = "\t"
+)
+```
+
+## demux
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+# change tmp path
+# export TMPDIR=/mnt/f/qiimeTMP 
+qiime cutadapt demux-paired \
+  --i-seqs ../temp/multiplexed-seqs.qza \
+  --m-forward-barcodes-file ../data/metadata.tsv \
+  --m-forward-barcodes-column Barcode \
+  --p-error-rate 0 \
+  --o-per-sample-sequences ../temp/demultiplexed-seqs.qza \
+  --o-untrimmed-sequences ../temp/untrimmed.qza \
+  --verbose &> ../temp/demux.txt
+```
+
+## Trim adapters
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime cutadapt trim-paired \
+  --i-demultiplexed-sequences ../temp/demultiplexed-seqs.qza \
+  --p-front-f CGATGT \
+  --p-error-rate 0 \
+  --o-trimmed-sequences ../temp/trimmed-seqs.qza \
+  --verbose &> ../temp/trim.txt
+```
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime demux summarize \
+  --i-data ../temp/trimmed-seqs.qza \
+  --o-visualization ../temp/trimmed-seqs.qzv
+```
+
+## remove primer
+
+MLf (GGTGGTGTMGGATTCACACARTAYGCWACAGC) /MLr (TTCATTGCRTAGTTWGGRTAGTT)
+
+F GGTGGTGTMGGATTCACACARTAYGCWACAGC
+R TTCATTGCRTAGTTWGGRTAGTT
+
+remove sequence shorter than 300
+
+```{r}
+library(Biostrings)
+# TTCATTGCRTAGTTWGGRTAGTT...GCTGTWGCRTAYTGTGTGAATCCKACACCACC
+reverseComplement(DNAString("GGTGGTGTMGGATTCACACARTAYGCWACAGC...AACTAYCCWAACTAYGCAATGAA"))
+```
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime cutadapt trim-paired \
+  --p-cores 6 \
+  --i-demultiplexed-sequences ../temp/trimmed-seqs.qza \
+  --p-adapter-f GGTGGTGTMGGATTCACACARTAYGCWACAGC...AACTAYCCWAACTAYGCAATGAA \
+  --p-adapter-r TTCATTGCRTAGTTWGGRTAGTT...GCTGTWGCRTAYTGTGTGAATCCKACACCACC \
+  --p-error-rate 0.2 \
+  --o-trimmed-sequences ../temp/primer_trimed.qza \
+  --verbose &> ../temp/primer_trimed.log
+  
+qiime demux summarize \
+    --i-data ../temp/primer_trimed.qza \
+    --o-visualization ../temp/primer_trimed.qcSummary.qzv
+```
+
+## get ASV by dada2
+
+Parkes, R. John, H. Sass1 G. Webster, and A. J. Watkins. "36 Methods for Studying Methanogens and Methanogenesis in Marine Sediments." (2010).
+
+MLf MLr length 464–491 
+
+S16 failed in denoising
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime dada2 denoise-paired \
+  --p-trunc-len-f 260 \
+  --p-trunc-len-r 260 \
+  --i-demultiplexed-seqs ../temp/primer_trimed.qza \
+  --p-n-threads 6 \
+  --o-table ../temp/fastq300.table.qza \
+  --o-representative-sequences ../temp/fastq300.rep-seqs.qza \
+  --o-denoising-stats ../temp/fastq300.denoising-stats.qza
+
+qiime metadata tabulate \
+    --m-input-file ../temp/fastq300.denoising-stats.qza \
+    --o-visualization ../temp/fastq300.denoising-stats.qzv
+```
+
+# filter short asv
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime feature-table filter-seqs \
+    --i-data ../temp/fastq300.rep-seqs.qza \
+    --m-metadata-file ../temp/fastq300.rep-seqs.qza \
+    --p-where 'length(sequence) > 390' \
+    --o-filtered-data ../temp/filteredASVseq.qza 
+    
+qiime feature-table filter-features \
+    --i-table ../temp/fastq300.table.qza \
+    --m-metadata-file ../temp/fastq300.rep-seqs.qza \
+    --p-where 'length(sequence) > 390' \
+    --o-filtered-table ../temp/filteredASVtable.qza 
+```
+
+# Cluster Feature 
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime vsearch cluster-features-de-novo \
+  --i-sequences ../temp/fastq300.rep-seqs.qza \
+  --i-table ../temp/fastq300.table.qza \
+  --p-perc-identity 0.90 \
+  --o-clustered-table ../temp/fastq300.90.table.qza \
+  --o-clustered-sequences ../temp/fastq300.90.seq.qza \
+  --p-threads 6
+```
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime vsearch cluster-features-de-novo \
+  --i-sequences ../temp/filteredASVseq.qza \
+  --i-table ../temp/filteredASVtable.qza \
+  --p-perc-identity 0.90 \
+  --o-clustered-table ../temp/filteredASVtable.90.qza \
+  --o-clustered-sequences ../temp/filteredASVseq.90.qza \
+  --p-threads 6
+```
+
+
+
+# species annotation
+
+```{bash}
+
+```
+
+# export OTU table and sequence
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime tools export \
+  --input-path ../temp/fastq300.90.seq.qza \
+  --output-path ../temp/
+
+qiime tools export \
+  --input-path ../temp/fastq300.90.table.qza \
+  --output-path ../temp/
+  
+biom convert -i ../temp/feature-table.biom \
+  -o ../temp/feature-table.tsv --to-tsv
+```
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime tools export \
+  --input-path ../temp/filteredASVseq.90.qza \
+  --output-path ../temp/filteredASV90
+
+qiime tools export \
+  --input-path ../temp/filteredASVtable.90.qza \
+  --output-path ../temp/filteredASV90
+  
+biom convert -i ../temp/filteredASV90/feature-table.biom \
+  -o ../temp/filteredASV90/feature-table.tsv --to-tsv
+```
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+seqkit subseq ../temp/filteredASV90/dna-sequences.fasta \
+  -r 1:419 \
+  > ../temp/filteredASV90/mcrA-sequences.fasta
+```
+
+# Select OTU with more than 1 sequence
+
+S13-S18 lack of mcrA OTU
+
+```{r}
+library(dplyr)
+library(stringr)
+library(tidyr)
+otu <-
+  read.table(
+    "../temp/filteredASV90/feature-table.tsv",
+    header = T,
+    sep = "\t",
+    comment.char = "",
+    skip = 1
+  )
+colnames(otu)[1] <- "OTU.ID"
+tax <-
+  read.table(
+    "../../吉林-nifH-RNA/temp/mergedDNARNA/mergedDNARNAfiltered/mcrAtax.tsv",
+    header = F,
+    sep = "\t"
+  )
+tax<-tax[,3:4]
+colnames(tax) <- c("id", "Taxon")
+sum(tax$Taxon == "")
+# tax<-tax[tax$Taxon != "Unassigned",]
+sum(is.na(tax$Taxon))
+rankTaxon <- data.frame(Taxon = tax$Taxon)
+rankTaxon <-
+  separate(rankTaxon, Taxon, sep = "\\|", into = as.character(1:8))
+colnames(rankTaxon) <-
+  c("Kingdom",
+    "Phylum",
+    "Class",
+    "Order",
+    "Family",
+    "Genus",
+    "Species",
+    "Strain")
+rankTaxon <- cbind(id = tax$id,
+                   rankTaxon)
+otuWithTax <- right_join(otu, rankTaxon, by = c("OTU.ID" = "id"))
+totalCount <- rowSums(otuWithTax[, 2:ncol(otu)])
+totalPercent <- totalCount / sum(totalCount) * 100
+otuWithTax$totalCount <- totalCount
+otuWithTax$totalPercent <- totalPercent
+otuWithTax <- arrange(otuWithTax, desc(totalCount))
+otuWithTax$OTU.IX <- paste0("OTU", 1:nrow(otuWithTax))
+otuWithTax <- otuWithTax[otuWithTax$totalCount > 1,]
+write.csv(otuWithTax,
+          "../table/OTUmcrA.csv",
+          row.names = F)
+# 1728 OTU with more than 1 sequences
+sum(otuWithTax$totalCount > 1)
+```
+

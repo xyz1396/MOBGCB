@@ -1,0 +1,80 @@
+---
+title: "networkCorrelation"
+author: "xyz"
+date: "2021/9/14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readxl)
+library(tidyr)
+library(dplyr)
+library(psych)
+```
+
+```{r}
+otuAbundance <- read.csv("networkOtuAbundance.csv")
+otuAbundance$Modularity <- paste0("M", otuAbundance$Modularity)
+cn <- read_xlsx("C N.xlsx")
+cn <- na.omit(cn)
+colnames(cn)
+cn <- cn[-1,]
+colnames(cn) <-
+  c(
+    "ID",
+    "Treatment",
+    "File",
+    "C13H4oxidation",
+    "C13H4assimilation",
+    "C13O2",
+    "TotalOrganicCarbon",
+    "TotalCO2Production",
+    "rootCapparentMineralization",
+    "rootCrespiration",
+    "N15fixation",
+    "N15remineralization",
+    "TotalNitrogen",
+    "rootNapparentMineralization",
+    "rootDerivedNH4"
+  )
+cn[, -1:-3] <- apply(cn[, -1:-3], 2, as.numeric)
+otuAbundance <-
+  as.data.frame(pivot_wider(otuAbundance[, -1], names_from = Modularity, values_from = Abundance))
+rownames(otuAbundance) <- otuAbundance$Sample
+otuAbundance <- otuAbundance[cn$ID, ]
+write.csv(otuAbundance,"otuAbundanceForCorrelation.csv",row.names = F)
+write.csv(cn,"cnForCorrelation.csv",row.names = F)
+```
+
+```{r}
+results<-corr.test(otuAbundance[,-1],cn[,-1:-3])
+write.csv(results$p,"correlationPvalue.csv")
+write.csv(results$r,"correlationRvalue.csv")
+ix<-results$p
+ix<-ix<0.05
+ix<-rowSums(ix)>0
+significance<-function(x){
+  if(x>=0.05)
+  ""
+  else if (x>=0.01)
+  "*"
+  else "**"
+}
+result.significance<-matrix(sapply(results$p[ix,],significance),nrow=sum(ix))
+pheatmap::pheatmap(
+  results$r[ix, ],
+  cluster_row = T,
+  scale = "row",
+  fontsize = 20,
+  # pix=width\height*300, col label angle_col = "45"
+  filename = "Heatmap of correlation.pdf",
+  width = 10,
+  height = 6,
+  display_numbers = result.significance
+)
+```
+

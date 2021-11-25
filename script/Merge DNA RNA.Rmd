@@ -1,0 +1,163 @@
+---
+title: "Merge DNA RNA"
+author: "xyz"
+date: "2021/10/26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+[Merge and summarize denoised data
+](https://github.com/allenlab/QIIME2_16S_ASV_protocol#merge-and-summarize-denoised-data)
+
+# merge
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime feature-table merge \
+  --i-tables ../temp/fastq300.table.qza \
+  --i-tables ../../吉林nifH-DNA/temp/fastq300.table.qza \
+  --o-merged-table ../temp/mergedDNARNA/mergedDNARNA.table.qza
+qiime feature-table merge-seqs \
+  --i-data ../temp/fastq300.rep-seqs.qza \
+  --i-data ../../吉林nifH-DNA/temp/fastq300.rep-seqs.qza \
+  --o-merged-data ../temp/mergedDNARNA/mergedDNARNA.rep-seqs.qza
+```
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime feature-table merge \
+  --i-tables ../temp/filteredASVtable.qza \
+  --i-tables ../../吉林nifH-DNA/temp/filteredASVtable.qza \
+  --o-merged-table ../temp/mergedDNARNA/mergedDNARNAfilteredASVtable.qza
+qiime feature-table merge-seqs \
+  --i-data ../temp/filteredASVseq.qza \
+  --i-data ../../吉林nifH-DNA/temp/filteredASVseq.qza \
+  --o-merged-data ../temp/mergedDNARNA/mergedDNARNAfilteredASVseq.qza
+```
+
+# Cluster Feature 
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime vsearch cluster-features-de-novo \
+  --i-sequences ../temp/mergedDNARNA/mergedDNARNA.rep-seqs.qza \
+  --i-table ../temp/mergedDNARNA/mergedDNARNA.table.qza \
+  --p-perc-identity 0.90 \
+  --o-clustered-table ../temp/mergedDNARNA/mergedDNARNA.90.table.qza \
+  --o-clustered-sequences ../temp/mergedDNARNA/mergedDNARNA.90.seq.qza \
+  --p-threads 6
+```
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime vsearch cluster-features-de-novo \
+  --i-sequences ../temp/mergedDNARNA/mergedDNARNAfilteredASVseq.qza \
+  --i-table ../temp/mergedDNARNA/mergedDNARNAfilteredASVtable.qza \
+  --p-perc-identity 0.90 \
+  --o-clustered-table ../temp/mergedDNARNA/mergedDNARNAfilteredASV.90.table.qza \
+  --o-clustered-sequences ../temp/mergedDNARNA/mergedDNARNAfilteredASV.90.seq.qza \
+  --p-threads 6
+```
+
+
+# export OTU table and sequence
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime tools export \
+  --input-path ../temp/mergedDNARNA/mergedDNARNA.90.seq.qza \
+  --output-path ../temp/mergedDNARNA
+
+qiime tools export \
+  --input-path ../temp/mergedDNARNA/mergedDNARNA.90.table.qza \
+  --output-path ../temp/mergedDNARNA
+  
+biom convert -i ../temp/mergedDNARNA/feature-table.biom \
+  -o ../temp/mergedDNARNA/feature-table.tsv --to-tsv
+```
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime tools export \
+  --input-path ../temp/mergedDNARNA/mergedDNARNAfilteredASV.90.table.qza \
+  --output-path ../temp/mergedDNARNA/mergedDNARNAfiltered
+
+qiime tools export \
+  --input-path ../temp/mergedDNARNA/mergedDNARNAfilteredASV.90.seq.qza \
+  --output-path ../temp/mergedDNARNA/mergedDNARNAfiltered
+  
+biom convert -i ../temp/mergedDNARNA/mergedDNARNAfiltered/feature-table.biom \
+  -o ../temp/mergedDNARNA/mergedDNARNAfiltered/feature-table.tsv --to-tsv
+```
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+seqkit subseq ../temp/mergedDNARNA/mergedDNARNAfiltered/dna-sequences.fasta \
+  -r 1:330 \
+  > ../temp/mergedDNARNA/mergedDNARNAfiltered/dna-rna-nifH-sequences.fasta
+```
+
+```{r}
+library(dplyr)
+library(stringr)
+library(tidyr)
+otu <-
+  read.table(
+    "../temp/mergedDNARNA/mergedDNARNAfiltered/feature-table.tsv",
+    header = T,
+    sep = "\t",
+    comment.char = "",
+    skip = 1
+  )
+colnames(otu)[1] <- "OTU.ID"
+tax <-
+  read.table(
+    "../temp/mergedDNARNA/mergedDNARNAfiltered/nifHtax.tsv",
+    header = F,
+    sep = "\t"
+  )
+tax<-tax[,3:4]
+colnames(tax) <- c("id", "Taxon")
+# 42 OTU without annotation
+sum(tax$Taxon == "")
+# tax<-tax[tax$Taxon != "Unassigned",]
+sum(is.na(tax$Taxon))
+rankTaxon <- data.frame(Taxon = tax$Taxon)
+rankTaxon <-
+  separate(rankTaxon, Taxon, sep = "\\|", into = as.character(1:8))
+colnames(rankTaxon) <-
+  c("Kingdom",
+    "Phylum",
+    "Class",
+    "Order",
+    "Family",
+    "Genus",
+    "Species",
+    "Strain")
+rankTaxon <- cbind(id = tax$id,
+                   rankTaxon)
+otuWithTax <- right_join(otu, rankTaxon, by = c("OTU.ID" = "id"))
+totalCount <- rowSums(otuWithTax[, 2:ncol(otu)])
+totalPercent <- totalCount / sum(totalCount) * 100
+otuWithTax$totalCount <- totalCount
+otuWithTax$totalPercent <- totalPercent
+otuWithTax <- arrange(otuWithTax, desc(totalCount))
+otuWithTax$OTU.IX <- paste0("OTU", 1:nrow(otuWithTax))
+otuWithTax <- otuWithTax[otuWithTax$totalCount > 1,]
+write.csv(otuWithTax,
+          "../table/OTUnifH.csv",
+          row.names = F)
+# 1728 OTU with more than 1 sequences
+sum(otuWithTax$totalCount > 1)
+```
+

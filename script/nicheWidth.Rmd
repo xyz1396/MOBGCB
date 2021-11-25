@@ -1,0 +1,68 @@
+---
+title: "nicheWidth"
+author: "xyz"
+date: "11/21/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(spaa)
+library(EcolUtils)
+```
+
+```{r}
+otu <-
+  read.csv("../table/OTU16S.csv")
+rownames(otu) <- otu$OTU.ID
+otu <- otu[, 2:19]
+set.seed(9527)
+otu.rarefy <- rrarefy(t(otu), min(colSums(otu)))
+niche_width_shannon <-
+  unlist(niche.width(otu.rarefy, method = 'shannon'))
+niche_width_levins <-
+  unlist(niche.width(otu.rarefy, method = 'levins'))
+set.seed(123)
+spec_gen_levins <-
+  spec.gen(
+    otu.rarefy,
+    niche.width.method = 'levins',
+    perm.method = 'quasiswap',
+    n = 1000,
+    probs = c(0.025, 0.975)
+  )
+spec_gen_shannon <-
+  spec.gen(
+    otu.rarefy,
+    niche.width.method = 'shannon',
+    perm.method = 'quasiswap',
+    n = 1000,
+    probs = c(0.025, 0.975)
+  )
+
+otu <-
+  read.csv("../table/OTU16S.csv")
+df <- data.frame(
+  OTU.ID = otu$OTU.ID,
+  niche_width_shannon = niche_width_shannon,
+  niche_width_levins = niche_width_levins
+)
+write.csv(df,
+          "../table/niche_width.csv",
+          row.names = F)
+
+spec_gen_levins <-
+  cbind(OTU.ID = rownames(spec_gen_levins), spec_gen_levins)
+write.csv(spec_gen_levins,
+          "../table/spec_gen_levins.csv",
+          row.names = F)
+spec_gen_shannon <-
+  cbind(OTU.ID = rownames(spec_gen_shannon), spec_gen_levins)
+write.csv(spec_gen_shannon,
+          "../table/spec_gen_shannon.csv",
+          row.names = F)
+```
+

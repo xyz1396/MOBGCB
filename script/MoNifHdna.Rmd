@@ -1,0 +1,236 @@
+---
+title: "Mo16S"
+author: "xyz"
+date: "2021/10/21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# import
+
+[multiplexed single end fastq with barcodes in sequence](https://docs.qiime2.org/2021.4/tutorials/importing/#multiplexed-single-end-fastq-with-barcodes-in-sequence)
+
+[use q2-cutadapt](https://forum.qiime2.org/t/demultiplexing-and-trimming-adapters-from-reads-with-q2-cutadapt/2313)
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime tools import \
+  --type MultiplexedPairedEndBarcodeInSequence \
+  --input-path ../data/fastq \
+  --output-path ../temp/multiplexed-seqs.qza
+```
+
+仅S1-S12是本实验的数据
+
+```{r}
+df<-readxl::read_xlsx("../data/mapping3nifH吉林_赵俊.xlsx")
+df<-df[df$`#SampleID` %in% paste0("S",1:12),]
+df2<-data.frame(
+  `sample-id` = df$`#SampleID`,
+  barcode=df$BarcodeSequence
+)
+colnames(df2) <- c("sample-id", "Barcode")
+write.table(
+  df2,
+  "../data/metadata.tsv",
+  quote = F,
+  row.names = F,
+  sep = "\t"
+)
+```
+
+## demux
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+# change tmp path
+# export TMPDIR=/mnt/f/qiimeTMP 
+qiime cutadapt demux-paired \
+  --i-seqs ../temp/multiplexed-seqs.qza \
+  --m-forward-barcodes-file ../data/metadata.tsv \
+  --m-forward-barcodes-column Barcode \
+  --p-error-rate 0 \
+  --o-per-sample-sequences ../temp/demultiplexed-seqs.qza \
+  --o-untrimmed-sequences ../temp/untrimmed.qza \
+  --verbose &> ../temp/demux.txt
+```
+
+## Trim adapters
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime cutadapt trim-paired \
+  --i-demultiplexed-sequences ../temp/demultiplexed-seqs.qza \
+  --p-front-f TTAGGC \
+  --p-error-rate 0 \
+  --o-trimmed-sequences ../temp/trimmed-seqs.qza \
+  --verbose &> ../temp/trim.txt
+```
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime demux summarize \
+  --i-data ../temp/trimmed-seqs.qza \
+  --o-visualization ../temp/trimmed-seqs.qzv
+```
+
+## remove primer
+
+https://www.scielo.sa.cr/scielo.php?script=sci_arttext&pid=S0034-77442013000300037
+
+F TGCGAYCCSAARGCBGACTC
+R ATSGCCATCATYTCRCCGGA
+
+remove sequence shorter than 300
+
+```{r}
+library(Biostrings)
+# ATSGCCATCATYTCRCCGGA...GAGTCVGCYTTSGGRTCGCA
+reverseComplement(DNAString("TGCGAYCCSAARGCBGACTC...TCCGGYGARATGATGGCSAT"))
+```
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime cutadapt trim-paired \
+  --p-cores 6 \
+  --i-demultiplexed-sequences ../temp/trimmed-seqs.qza \
+  --p-adapter-f TGCGAYCCSAARGCBGACTC...TCCGGYGARATGATGGCSAT \
+  --p-adapter-r ATSGCCATCATYTCRCCGGA...GAGTCVGCYTTSGGRTCGCA \
+  --p-error-rate 0.2 \
+  --o-trimmed-sequences ../temp/primer_trimed.qza \
+  --verbose &> ../temp/primer_trimed.log
+  
+qiime demux summarize \
+    --i-data ../temp/primer_trimed.qza \
+    --o-visualization ../temp/primer_trimed.qcSummary.qzv
+```
+
+## get ASV by dada2
+
+A Comprehensive Evaluation of PCR Primers to Amplify the nifH Gene of Nitrogenase
+
+A majority of the 393 full-length nifH sequences currently present
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime dada2 denoise-paired \
+  --p-trunc-len-f 200 \
+  --p-trunc-len-r 200 \
+  --i-demultiplexed-seqs ../temp/primer_trimed.qza \
+  --p-n-threads 6 \
+  --o-table ../temp/fastq300.table.qza \
+  --o-representative-sequences ../temp/fastq300.rep-seqs.qza \
+  --o-denoising-stats ../temp/fastq300.denoising-stats.qza
+
+qiime metadata tabulate \
+    --m-input-file ../temp/fastq300.denoising-stats.qza \
+    --o-visualization ../temp/fastq300.denoising-stats.qzv
+```
+
+# filter short asv
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime feature-table filter-seqs \
+    --i-data ../temp/fastq300.rep-seqs.qza \
+    --m-metadata-file ../temp/fastq300.rep-seqs.qza \
+    --p-where 'length(sequence) > 310' \
+    --o-filtered-data ../temp/filteredASVseq.qza 
+    
+qiime feature-table filter-features \
+    --i-table ../temp/fastq300.table.qza \
+    --m-metadata-file ../temp/fastq300.rep-seqs.qza \
+    --p-where 'length(sequence) > 310' \
+    --o-filtered-table ../temp/filteredASVtable.qza 
+```
+
+# Cluster Feature 
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime vsearch cluster-features-de-novo \
+  --i-sequences ../temp/fastq300.rep-seqs.qza \
+  --i-table ../temp/fastq300.table.qza \
+  --p-perc-identity 0.90 \
+  --o-clustered-table ../temp/fastq300.90.table.qza \
+  --o-clustered-sequences ../temp/fastq300.90.seq.qza \
+  --p-threads 6
+```
+
+# species annotation
+
+```{bash}
+
+```
+
+# export OTU table and sequence
+
+```{bash}
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate qiime2
+qiime tools export \
+  --input-path ../temp/fastq300.90.seq.qza \
+  --output-path ../temp/
+
+qiime tools export \
+  --input-path ../temp/fastq300.90.table.qza \
+  --output-path ../temp/
+  
+biom convert -i ../temp/feature-table.biom \
+  -o ../temp/feature-table.tsv --to-tsv
+```
+
+# Select OTU with more than 1 sequence
+
+```{r}
+library(tidyverse)
+otu <- read.table("../temp/feature-table.tsv",header = T,
+                  sep = "\t",comment.char="",skip=1)
+colnames(otu)[1]<-"OTU.ID"
+tax <- read.table("../temp/taxonomy.tsv",
+                  header = T,
+                  sep = "\t")
+# 22 OTU without annotation
+sum(tax$Taxon == "Unassigned")
+# tax<-tax[tax$Taxon != "Unassigned",]
+sum(is.na(tax$Taxon))
+rankTaxon <- data.frame(Taxon = tax$Taxon)
+rankTaxon <-
+  separate(rankTaxon, Taxon, sep = "; ", into = as.character(1:7))
+colnames(rankTaxon) <-
+  c("Kingdom",
+    "Phylum",
+    "Class",
+    "Order",
+    "Family",
+    "Genus",
+    "Species")
+rankTaxon <- cbind(id = tax$Feature.ID,
+                   rankTaxon,
+                   Confidence = tax$Confidence)
+otuWithTax <- right_join(otu, rankTaxon, by = c("OTU.ID" = "id"))
+totalCount <- rowSums(otuWithTax[, 2:ncol(otu)])
+totalPercent <- totalCount / sum(totalCount) * 100
+otuWithTax$totalCount <- totalCount
+otuWithTax$totalPercent <- totalPercent
+otuWithTax <- arrange(otuWithTax, desc(totalCount))
+otuWithTax$OTU.IX<-paste0("OTU",1:nrow(otuWithTax))
+otuWithTax<-otuWithTax[otuWithTax$totalCount > 1,]
+write.csv(otuWithTax,
+          "../table/OTUByNaive_bayesSortByOneMore.csv",
+          row.names = F)
+# 7246 OTU with more than 1 sequences 
+sum(otuWithTax$totalCount > 1)
+```
+

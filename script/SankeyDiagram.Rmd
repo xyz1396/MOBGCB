@@ -1,0 +1,40 @@
+---
+title: "SankeyDiagram"
+author: "xyz"
+date: "2021/11/25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggalluvial)
+library(dplyr)
+```
+
+```{r}
+df <- read.table("../temp/function.txt", sep = "\t", header = T)
+tempDf <- df
+tempDf <- group_by(tempDf, level1, level2, level3)
+tempDf <- as.data.frame(summarise(tempDf, Count = n()))
+tempDf <- to_lodes_form(tempDf,
+                              key = "Level",
+                              axes = 2:3)
+
+ggplot(data = tempDf,
+       aes(x = Level, stratum = stratum, alluvium = alluvium,
+           y = Count, label = stratum)) +
+  geom_alluvium(aes(fill = level1)) +
+  scale_x_discrete(
+    limits = c("level2", "level3"),
+    expand = c(.05, .05)
+  ) +
+  geom_stratum() + geom_text(stat = "stratum") +
+  theme_minimal() +
+  ggsave("../figure/functionSankey.pdf",
+         width = 20,
+         height = 40)
+```
+
